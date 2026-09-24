@@ -1,0 +1,12 @@
+<% content_for :title, title %>
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900"><%= title %></h1>
+    <% if local_assigns[:subtitle] %><p class="mt-1 max-w-3xl text-sm text-slate-500"><%= subtitle %></p><% end %>
+  </div>
+  <% if local_assigns[:needs_token] && !authenticated? %>
+    <div class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
+      Needs an access token — <%= link_to "authenticate first", auth_path, class: "font-semibold underline" %>.
+    </div>
+  <% end %>
+</div>

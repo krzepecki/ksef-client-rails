@@ -1,0 +1,61 @@
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "tools/**/*"
+    - "vendor/**/*"
+    - "spec/fixtures/**/*"
+
+# Crypto / XAdES / parsers need longer, dense methods — the metrics are relaxed where enforcing
+# them would hurt the readability of the algorithm being mirrored.
+Metrics/MethodLength:
+  Max: 40
+Metrics/AbcSize:
+  Max: 40
+Metrics/ClassLength:
+  Max: 250
+Metrics/ModuleLength:
+  Max: 250
+Metrics/CyclomaticComplexity:
+  Max: 12
+Metrics/PerceivedComplexity:
+  Max: 12
+Metrics/BlockLength:
+  Exclude:
+    - "spec/**/*"
+    - "*.gemspec"
+    - "examples/*/config/routes.rb"
+
+Style/Documentation:
+  Enabled: false
+
+# The whole gem consistently uses double quotes.
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+# Keyword arguments are self-documenting — they are not counted towards the parameter limit
+# (this covers send_invoice, EncryptionInfo and friends).
+Metrics/ParameterLists:
+  CountKeywordArgs: false
+
+# We deliberately use `size`/`hash` fields in value objects (semantically the right names).
+Lint/StructNewOverride:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+Layout/LineLength:
+  Max: 120
+
+# The gem-name entry point must match the (dashed) gem name so Bundler can auto-require it.
+Naming/FileName:
+  Exclude:
+    - "lib/ksef-client-rails.rb"
+
+Naming/MethodParameterName:
+  AllowedNames: [iv, id, io, to, k, v, x, y, r, s]
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false

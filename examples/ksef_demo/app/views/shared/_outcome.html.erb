@@ -1,0 +1,30 @@
+<%# The result (or error) of the last action on the page. %>
+<% if (outcome = @outcome) %>
+  <section id="outcome" class="card overflow-hidden <%= outcome.error ? 'ring-rose-300' : 'ring-emerald-300' %>">
+    <div class="flex items-center justify-between gap-4 border-b px-5 py-3 <%= outcome.error ? 'border-rose-100 bg-rose-50' : 'border-emerald-100 bg-emerald-50' %>">
+      <div class="flex items-center gap-2 font-semibold <%= outcome.error ? 'text-rose-800' : 'text-emerald-800' %>">
+        <%= icon(outcome.error ? :x : :check) %>
+        <%= outcome.title %> — <%= outcome.error ? "failed" : "done" %>
+      </div>
+      <span class="font-mono text-xs text-slate-500"><%= outcome.duration_ms %> ms</span>
+    </div>
+    <div class="space-y-4 p-5">
+      <% if outcome.error %>
+        <% if outcome.error["type"] == "ApplicationController::NotAuthenticated" %>
+          <p class="text-sm"><%= outcome.error["message"] %> <%= link_to "Go to Authentication →", auth_path, class: "font-semibold text-indigo-600" %></p>
+        <% else %>
+          <%= render_value(outcome.error) %>
+        <% end %>
+      <% elsif outcome.result.nil? %>
+        <p class="text-sm text-slate-600">KSeF accepted the request (empty response body).</p>
+      <% else %>
+        <%= render_value(outcome.result) %>
+      <% end %>
+      <details class="text-xs">
+        <summary class="cursor-pointer text-slate-500 hover:text-slate-800">Raw JSON</summary>
+        <div class="mt-2"><%= code_block(JSON.pretty_generate(JSON.parse((outcome.error || outcome.result).to_json))) %></div>
+      </details>
+    </div>
+  </section>
+  <script>document.getElementById("outcome").scrollIntoView({ block: "start", behavior: "smooth" });</script>
+<% end %>

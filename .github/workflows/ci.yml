@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Ruby ${{ matrix.ruby }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.3", "3.4", "4.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: RSpec
+        run: bundle exec rspec
+      - name: RuboCop
+        run: bundle exec rubocop
+
+      - name: XSD validation of the FA(3) sample (schemas in repo, offline)
+        run: bundle exec rake xsd:validate
+
+  minimum:
+    name: Lowest allowed dependency versions (Ruby 3.3)
+    runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: gemfiles/minimum.gemfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: RSpec
+        run: bundle exec rspec
+
+  # The built .gem in an empty GEM_HOME: only the runtime dependencies, as an app without the dev bundle
+  # sees them.
+  package:
+    name: Packaged gem, runtime dependencies only (Ruby ${{ matrix.ruby }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.3", "3.4", "4.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+      - name: Build and install
+        env:
+          GEM_HOME: ${{ runner.temp }}/runtime-gems
+          GEM_PATH: ${{ runner.temp }}/runtime-gems
+        run: |
+          gem build ksef-client-rails.gemspec
+          gem install --no-document ksef-client-rails-*.gem
+      - name: Load and build an invoice outside the repository
+        working-directory: ${{ runner.temp }}
+        env:
+          GEM_HOME: ${{ runner.temp }}/runtime-gems
+          GEM_PATH: ${{ runner.temp }}/runtime-gems
+        run: |
+          ruby -e '
+            require "ksef"
+            xml = Ksef::Invoices::Sample.minimal(seller_nip: "5555555555", invoice_number: "FV/1").to_xml
+            errors = Ksef::Invoices::Validator.new.validate(xml)
+            abort(errors.inspect) unless errors.empty?
+            Ksef::Batch::PackageBuilder.zip("invoice.xml" => xml)
+            puts "ksef #{Ksef::VERSION} loads and builds an invoice"'
+
+  oracle:
+    name: Offline crypto/XAdES oracle (cross-language)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # setup-ruby installs gems into vendor/bundle, so the generators need `bundle exec` to see
+      # nokogiri.
+      - name: Install oracle deps
+        run: pip install cryptography lxml
+      - name: Crypto oracle
+        run: bundle exec ruby tools/oracle/gen_crypto.rb | python tools/oracle/verify_crypto.py
+      - name: XAdES oracle
+        run: bundle exec ruby tools/oracle/gen_xades.rb | python tools/oracle/verify_xades.py

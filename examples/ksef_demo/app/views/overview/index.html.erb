@@ -1,0 +1,98 @@
+<%= render "shared/page_header", title: "Overview",
+      subtitle: "A manual test bench for the ksef-client-rails gem against KSeF API 2.0. Configure the environment, check the connection, sign in — then every page below uses the same client and tokens." %>
+
+<%= render "shared/outcome" %>
+
+<%# Quick start %>
+<ol class="grid gap-4 md:grid-cols-3">
+  <% steps = [
+       ["Check the connection", "Anonymous call — proves the environment and network.", @outcome&.result.present?, nil],
+       ["Authenticate", "KSeF token or an XAdES-signed certificate.", authenticated?, auth_path],
+       ["Issue an invoice", "Build an FA(3) invoice in a form and send it.", session[:recent_invoices].present?, new_invoice_path]
+     ] %>
+  <% steps.each_with_index do |(title, text, done, path), i| %>
+    <li class="card flex gap-4 p-5">
+      <div class="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold <%= done ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-50 text-indigo-700' %>">
+        <%= done ? icon(:check, "size-5") : i + 1 %>
+      </div>
+      <div>
+        <div class="font-semibold"><%= path ? link_to(title, path, class: "hover:text-indigo-600") : title %></div>
+        <p class="text-sm text-slate-500"><%= text %></p>
+      </div>
+    </li>
+  <% end %>
+</ol>
+
+<div class="grid gap-6 lg:grid-cols-5">
+  <%= render "shared/card", title: "Configuration", subtitle: "Kept in the server-side session. Changing the environment signs you out.", css: "lg:col-span-3" do %>
+    <%= form_with url: settings_path, method: :patch, class: "space-y-4", data: { no_busy: true } do %>
+      <div>
+        <span class="label">Environment</span>
+        <div class="grid grid-cols-3 gap-2">
+          <% { "test" => "TEST — free testing, self-signed certificates", "demo" => "DEMO — pre-production", "prod" => "PROD — real invoices!" }.each do |env, text| %>
+            <label class="flex cursor-pointer flex-col rounded-lg p-3 ring-1 ring-slate-200 has-checked:bg-indigo-50 has-checked:ring-2 has-checked:ring-indigo-600">
+              <input type="radio" name="environment" value="<%= env %>" class="sr-only" <%= "checked" if settings["environment"] == env %>>
+              <span class="text-sm font-semibold"><%= env.upcase %></span>
+              <span class="text-xs text-slate-500"><%= text.split(" — ").last %></span>
+            </label>
+          <% end %>
+        </div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="label" for="nip">Context tax id (NIP)</label>
+          <input class="input font-mono user-invalid:ring-rose-500" id="nip" name="nip" value="<%= settings["nip"] %>" inputmode="numeric" required pattern="<%= InvoiceDraft::NIP_PATTERN %>" title="10 digits (hyphens and a PL prefix allowed)">
+          <p class="hint">The seller on issued invoices must match it.</p>
+        </div>
+        <div>
+          <label class="label" for="timeout">HTTP timeout (s)</label>
+          <input class="input" id="timeout" type="number" name="timeout" min="5" max="300" value="<%= settings["timeout"] %>">
+        </div>
+      </div>
+      <label class="flex items-start gap-3 text-sm">
+        <input type="checkbox" name="enforce_xades" value="1" class="checkbox mt-0.5" <%= "checked" if settings["enforce_xades"] %>>
+        <span>Enforce XAdES compliance <span class="block text-xs text-slate-500">Sends <code>X-KSeF-Feature: enforce-xades-compliance</code>; KSeF applies the strict signature checks with or without it.</span></span>
+      </label>
+      <div class="flex justify-end"><button class="btn-primary">Save settings</button></div>
+    <% end %>
+  <% end %>
+
+  <%= render "shared/card", title: "Check connection", subtitle: "Fetches the Ministry of Finance public-key certificates. No credentials needed.", endpoint: "GET /security/public-key-certificates", css: "lg:col-span-2" do %>
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">API</dt><dd class="truncate font-mono text-xs"><%= ksef_config.api_url %></dd></div>
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">QR base</dt><dd class="truncate font-mono text-xs"><%= ksef_config.qr_url %></dd></div>
+    </dl>
+    <%= form_with url: check_connection_path do %>
+      <button class="btn-primary w-full" data-busy="Fetching public keys…">Check connection</button>
+    <% end %>
+  <% end %>
+</div>
+
+<%# What the gem covers %>
+<section>
+  <h2 class="mb-3 text-sm font-semibold tracking-wide text-slate-500 uppercase">Everything in the demo</h2>
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <% [
+         [:key, "Authentication", auth_path, "KSeF token (RSA-OAEP), XAdES certificate signature, refresh, auth sessions."],
+         [:document, "Issue invoice", new_invoice_path, "FA(3) form → XSD validation → online session → UPO + QR."],
+         [:list, "Browse invoices", invoices_path, "Download by KSeF number, metadata query."],
+         [:qr, "QR codes", qr_path, "CODE I (online) and CODE II (offline, certificate-signed)."],
+         [:stack, "Sessions & UPO", sessions_path, "Session list, invoices, rejections with details, UPO download."],
+         [:layers, "Batch session", batch_path, "Many invoices in one encrypted, split ZIP package."],
+         [:download, "Export & sync", exports_path, "Encrypted invoice package export, incremental HWM sync."],
+         [:token, "KSeF tokens", tokens_path, "Generate, list, check and revoke KSeF tokens."],
+         [:badge, "Certificates", certificates_path, "Limits, CSR generation, enrollment, list, retrieve, revoke."],
+         [:shield, "Permissions", permissions_path, "Query grants and roles, grant to a person, operation status."],
+         [:gauge, "Limits", limits_path, "Session, certificate and API rate limits in force."],
+         [:flask, "Test data", test_data_path, "Create test subjects, persons and permissions on TEST."]
+       ].each do |icon_name, title, path, text| %>
+      <%= link_to path, class: "card group flex gap-4 p-5 transition hover:ring-indigo-300" do %>
+        <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white"><%= icon(icon_name) %></div>
+        <div>
+          <div class="font-semibold"><%= title %></div>
+          <p class="text-sm text-slate-500"><%= text %></p>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</section>

@@ -1,0 +1,168 @@
+<%# Typical + Full share this form; the Full-only parts sit in [data-full-only] fieldsets, disabled (so not submitted) on Typical. %>
+<% field = ->(name) { "draft[#{name}]" } %>
+
+<%# Invoice type and correction — Full only %>
+<fieldset data-full-only class="card card-body space-y-4">
+  <div class="flex items-center justify-between">
+    <h2 class="card-title">Invoice type <span class="text-sm font-normal text-slate-400">RodzajFaktury</span></h2>
+  </div>
+  <div class="grid gap-2 sm:grid-cols-2">
+    <% InvoiceDraft::INVOICE_TYPES.each do |code, label| %>
+      <label class="flex cursor-pointer items-center gap-3 rounded-lg p-3 text-sm ring-1 ring-slate-200 has-checked:bg-indigo-50 has-checked:ring-2 has-checked:ring-indigo-600">
+        <input type="radio" name="<%= field.(:invoice_type) %>" value="<%= code %>" data-invoice-type <%= "checked" if draft.invoice_type == code %>>
+        <span><span class="font-mono font-semibold"><%= code %></span> — <%= label %></span>
+      </label>
+    <% end %>
+  </div>
+  <div id="correction" class="<%= 'hidden' unless draft.correction? %> grid gap-4 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
+    <div><label class="label">Corrected invoice number <span class="text-slate-400">NrFaKorygowanej</span></label><input class="input font-mono" name="<%= field.(:corrected_number) %>" value="<%= draft.corrected_number %>" data-correction-required></div>
+    <div><label class="label">Its issue date <span class="text-slate-400">DataWystFaKorygowanej</span></label><input class="input" type="date" name="<%= field.(:corrected_date) %>" value="<%= draft.corrected_date %>" data-correction-required></div>
+    <div class="sm:col-span-2">
+      <label class="label">Its KSeF number <span class="text-slate-400">NrKSeFFaKorygowanej — empty = issued outside KSeF (NrKSeFN)</span></label>
+      <input class="input font-mono" name="<%= field.(:corrected_ksef_number) %>" value="<%= draft.corrected_ksef_number %>" list="recent-ksef-numbers" placeholder="5555555555-20260924-…">
+      <datalist id="recent-ksef-numbers"><% Array(session[:recent_invoices]).each do |inv| %><option value="<%= inv["ksef_number"] %>"><%= inv["number"] %></option><% end %></datalist>
+    </div>
+    <div><label class="label">Reason <span class="text-slate-400">PrzyczynaKorekty</span></label><input class="input" name="<%= field.(:correction_reason) %>" value="<%= draft.correction_reason %>"></div>
+    <div>
+      <label class="label">Effect <span class="text-slate-400">TypKorekty</span></label>
+      <select class="input" name="<%= field.(:correction_type) %>"><%= options_for_select(InvoiceDraft::CORRECTION_TYPES.invert, draft.correction_type) %></select>
+    </div>
+    <p class="hint sm:col-span-2">Enter the lines as the <strong>difference</strong> to the original (negative quantities or prices lower the amounts).</p>
+  </div>
+</fieldset>
+
+<%# Parties %>
+<div class="grid gap-6 md:grid-cols-2">
+  <section class="card card-body space-y-3">
+    <div class="flex items-center justify-between"><h2 class="card-title">Seller</h2><span class="text-xs text-slate-500">Podmiot1</span></div>
+    <div>
+      <span class="label">NIP (session context)</span>
+      <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 font-mono text-sm ring-1 ring-slate-200">
+        <%= settings["nip"] %> <%= link_to "change", root_path, class: "font-sans text-xs text-indigo-600" %>
+      </div>
+    </div>
+    <div><label class="label">Name</label><input class="input" name="<%= field.("seller][name") %>" value="<%= draft.seller&.name %>" required></div>
+    <div><label class="label">Address</label><input class="input" name="<%= field.("seller][address") %>" value="<%= draft.seller&.address %>" required></div>
+    <%= render "contact_fields", prefix: "seller", party: draft.seller %>
+  </section>
+
+  <section class="card card-body space-y-3">
+    <div class="flex items-center justify-between"><h2 class="card-title">Buyer</h2><span class="text-xs text-slate-500">Podmiot2</span></div>
+    <fieldset data-full-only>
+      <label class="label">Identified by</label>
+      <select class="input" name="<%= field.("buyer][id_type") %>" id="buyer-id-type"><%= options_for_select(InvoiceDraft::BUYER_ID_TYPES.invert, draft.buyer&.identification) %></select>
+    </fieldset>
+    <div data-buyer-id="nip">
+      <label class="label">NIP</label>
+      <input class="input font-mono user-invalid:ring-rose-500" name="<%= field.("buyer][nip") %>" value="<%= draft.buyer&.nip %>" inputmode="numeric" pattern="<%= InvoiceDraft::NIP_PATTERN %>" title="10 digits (hyphens and a PL prefix allowed)" placeholder="empty = consumer (BrakID)" data-required-for="nip">
+    </div>
+    <fieldset data-full-only class="space-y-3">
+      <div data-buyer-id="eu" class="grid grid-cols-3 gap-2">
+        <div><label class="label">EU country <span class="text-slate-400">KodUE</span></label><input class="input font-mono uppercase" name="<%= field.("buyer][eu_code") %>" value="<%= draft.buyer&.eu_code %>" maxlength="2" placeholder="DE" data-required-for="eu"></div>
+        <div class="col-span-2"><label class="label">VAT number <span class="text-slate-400">NrVatUE</span></label><input class="input font-mono" name="<%= field.("buyer][vat_eu") %>" value="<%= draft.buyer&.vat_eu %>" placeholder="123456789" data-required-for="eu"></div>
+      </div>
+      <div data-buyer-id="other">
+        <label class="label">Tax ID <span class="text-slate-400">NrID</span></label>
+        <input class="input font-mono" name="<%= field.("buyer][id_number") %>" value="<%= draft.buyer&.id_number %>" data-required-for="other">
+      </div>
+      <div><label class="label">Country <span class="text-slate-400">Adres/KodKraju — empty = PL; required for an EU or other tax ID; not PL for 0 WDT / 0 EX</span></label><input class="input font-mono uppercase" name="<%= field.("buyer][country") %>" value="<%= draft.buyer&.country %>" maxlength="2" placeholder="PL" data-required-for="eu other"></div>
+    </fieldset>
+    <div><label class="label">Name</label><input class="input" name="<%= field.("buyer][name") %>" value="<%= draft.buyer&.name %>" required></div>
+    <div><label class="label">Address</label><input class="input" name="<%= field.("buyer][address") %>" value="<%= draft.buyer&.address %>" required></div>
+    <%= render "contact_fields", prefix: "buyer", party: draft.buyer %>
+  </section>
+</div>
+
+<%# Invoice details %>
+<section class="card card-body">
+  <h2 class="card-title mb-4">Details</h2>
+  <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+    <div class="sm:col-span-2">
+      <label class="label">Invoice number <span class="text-slate-400">P_2</span></label>
+      <input class="input font-mono" name="<%= field.(:number) %>" value="<%= draft.number %>" required>
+      <p class="hint"><code>FV/DEMO/…</code> numbers are refreshed on every send (duplicates get 440).</p>
+    </div>
+    <div><label class="label">Issue date <span class="text-slate-400">P_1</span></label><input class="input" type="date" name="<%= field.(:issue_date) %>" value="<%= draft.issue_date %>" required></div>
+    <div><label class="label">Sale date <span class="text-slate-400">P_6</span></label><input class="input" type="date" name="<%= field.(:sale_date) %>" value="<%= draft.sale_date %>"></div>
+    <div class="sm:col-span-2"><label class="label">Place of issue <span class="text-slate-400">P_1M</span></label><input class="input" name="<%= field.(:place) %>" value="<%= draft.place %>"></div>
+    <div><label class="label">Currency</label><div class="input bg-slate-50">PLN</div></div>
+  </div>
+</section>
+
+<%# Line items %>
+<section class="card">
+  <div class="flex items-center justify-between px-5 pt-5 sm:px-6">
+    <h2 class="card-title">Line items <span class="text-sm font-normal text-slate-400">FaWiersz</span></h2>
+    <button type="button" id="add-line" class="btn-secondary py-1.5!">+ Add line</button>
+  </div>
+  <div class="overflow-x-auto p-2 sm:p-4">
+    <table class="w-full text-sm" id="lines">
+      <thead>
+        <tr class="text-left text-xs text-slate-500">
+          <th class="w-8 px-2 py-2">#</th>
+          <th class="min-w-48 px-2 py-2">Name</th>
+          <th class="w-20 px-2 py-2">Qty</th>
+          <th class="w-20 px-2 py-2">Unit</th>
+          <th class="w-28 px-2 py-2">Net price</th>
+          <th class="w-32 px-2 py-2">VAT</th>
+          <th class="w-28 px-2 py-2 text-right">Net value</th>
+          <th class="w-8"></th>
+        </tr>
+      </thead>
+      <% (draft.lines.presence || [InvoiceDraft::Line.new(quantity: "1", unit: "szt.", rate: "23")]).each_with_index do |line, i| %>
+        <%= render "line", line: line, index: i %>
+      <% end %>
+    </table>
+  </div>
+  <div id="exemption" class="hidden border-t border-slate-100 px-5 py-4 sm:px-6">
+    <label class="label" for="exemption-reason">Exemption basis <span class="text-slate-400">P_19A — required with a “zw” line: the provision the exemption rests on</span></label>
+    <input class="input" id="exemption-reason" name="<%= field.(:exemption_reason) %>" value="<%= draft.exemption_reason %>" placeholder="e.g. art. 43 ust. 1 pkt 37 ustawy o VAT">
+  </div>
+</section>
+<template id="line-template"><%= render "line", line: InvoiceDraft::Line.new(quantity: "1", unit: "szt.", rate: "23"), index: "__INDEX__" %></template>
+
+<%# Annotations — Full only %>
+<fieldset data-full-only class="card card-body">
+  <h2 class="card-title mb-3">Annotations <span class="text-sm font-normal text-slate-400">Adnotacje</span></h2>
+  <div class="grid gap-2 sm:grid-cols-2">
+    <% InvoiceDraft::ANNOTATIONS.each do |key, (code, label)| %>
+      <label class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm ring-1 ring-slate-200 has-checked:bg-indigo-50 has-checked:ring-indigo-300">
+        <input type="checkbox" class="checkbox" name="<%= field.("annotations][#{key}") %>" value="1" <%= "checked" if draft.annotations.map(&:to_s).include?(key) %>>
+        <span><span class="font-mono text-xs text-slate-500"><%= code %></span> <%= label %></span>
+      </label>
+    <% end %>
+  </div>
+  <p class="hint mt-2">A “zw” line sets the exemption (P_19) and an “oo” or “np II” line the reverse charge (P_18) automatically; unchecked flags are sent as “2” (no).</p>
+</fieldset>
+
+<%# Payment %>
+<section class="card card-body space-y-4">
+  <h2 class="card-title">Payment <span class="text-sm font-normal text-slate-400">Platnosc</span></h2>
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div>
+      <label class="label">Method</label>
+      <select class="input" name="<%= field.(:payment_method) %>">
+        <option value="">— none —</option>
+        <%= options_for_select(InvoiceDraft::PAYMENT_METHODS.invert, draft.payment_method) %>
+      </select>
+    </div>
+    <div><label class="label">Due date</label><input class="input" type="date" name="<%= field.(:due_date) %>" value="<%= draft.due_date %>"></div>
+    <div><label class="label">Bank account (NRB)</label><input class="input font-mono" id="bank-account" name="<%= field.(:bank_account) %>" value="<%= draft.bank_account %>"></div>
+  </div>
+  <fieldset data-full-only class="grid gap-4 sm:grid-cols-3">
+    <label class="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" class="checkbox" id="paid" name="<%= field.(:paid) %>" value="1" <%= "checked" if draft.paid.to_s == "1" %>> Already paid <span class="text-xs text-slate-400">Zaplacono</span></label>
+    <div><label class="label">Payment date <span class="text-slate-400">DataZaplaty — required when paid</span></label><input class="input" type="date" id="paid-date" name="<%= field.(:paid_date) %>" value="<%= draft.paid_date %>"></div>
+    <div><label class="label">Bank name <span class="text-slate-400">NazwaBanku — with a bank account</span></label><input class="input" id="bank-name" name="<%= field.(:bank_name) %>" value="<%= draft.bank_name %>"></div>
+  </fieldset>
+</section>
+
+<%# Footer — Full only %>
+<fieldset data-full-only class="card card-body">
+  <h2 class="card-title mb-4">Footer <span class="text-sm font-normal text-slate-400">Stopka</span></h2>
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div class="sm:col-span-3"><label class="label">Footer text <span class="text-slate-400">StopkaFaktury</span></label><textarea class="input" rows="2" name="<%= field.(:footer) %>"><%= draft.footer %></textarea></div>
+    <div><label class="label">KRS</label><input class="input font-mono" name="<%= field.(:krs) %>" value="<%= draft.krs %>" maxlength="10" placeholder="10 digits"></div>
+    <div><label class="label">REGON</label><input class="input font-mono" name="<%= field.(:regon) %>" value="<%= draft.regon %>" maxlength="14" placeholder="9 or 14 digits"></div>
+    <div><label class="label">BDO</label><input class="input font-mono" name="<%= field.(:bdo) %>" value="<%= draft.bdo %>" maxlength="9"></div>
+  </div>
+</fieldset>

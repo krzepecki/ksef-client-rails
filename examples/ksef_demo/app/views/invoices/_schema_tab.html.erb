@@ -1,0 +1,10 @@
+<div class="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-200">
+  Every element of the FA(3) schema, generated from the XSD itself (<%= link_to "schemat_FA(3)", "https://crd.gov.pl/wzor/2025/06/25/13775/", class: "underline", target: "_blank", rel: "noopener" %>).
+  Empty fields are left out; amber boxes are choices — only the selected branch is sent. The totals are <strong>not</strong> computed here
+  and only the structure is checked: an invoice that passes the XSD can still be rejected by KSeF's business rules.
+</div>
+<input type="hidden" name="invoice_xml" id="schema-xml">
+<div id="schema-root" class="space-y-2">
+  <%= schema_form(SchemaForm.for, xml) %>
+</div>
+<% if params[:selftest] %><pre id="schema-selftest" class="hidden"></pre><% end %>

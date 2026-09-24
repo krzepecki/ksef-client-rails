@@ -1,0 +1,4 @@
+<fieldset data-full-only class="grid grid-cols-2 gap-2">
+  <div><label class="label">E-mail <span class="text-slate-400">DaneKontaktowe</span></label><input class="input" type="email" name="draft[<%= prefix %>][email]" value="<%= party&.email %>"></div>
+  <div><label class="label">Phone</label><input class="input" name="draft[<%= prefix %>][phone]" value="<%= party&.phone %>"></div>
+</fieldset>

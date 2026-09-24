@@ -1,0 +1,53 @@
+<%= render "shared/page_header", title: "Test data",
+      subtitle: "TEST environment only, no authentication needed. Following dane-testowe-scenariusze.md: a sole trader (JDG) or a bailiff is a person (NIP + PESEL); a VAT group, JST or enforcement authority is a subject." %>
+
+<% unless test_environment? %>
+  <div class="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-200">You are on <strong>PROD</strong> — these endpoints do not exist there. Switch the environment on the <%= link_to "Overview", root_path, class: "underline" %>.</div>
+<% end %>
+
+<%= render "shared/outcome" %>
+
+<fieldset class="grid gap-6 lg:grid-cols-2" <%= "disabled" unless test_environment? %>>
+  <%= render "shared/card", title: "Create a subject", endpoint: "POST /testdata/subject" do %>
+    <%= form_with url: test_data_subject_path, class: "space-y-3" do %>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div><label class="label">NIP</label><input class="input font-mono" name="nip" placeholder="10 digits" required></div>
+        <div><label class="label">Type</label><select class="input" name="subject_type"><% %w[VatGroup JST EnforcementAuthority].each do |t| %><option><%= t %></option><% end %></select></div>
+      </div>
+      <div><label class="label">Subunit NIPs (VAT group members / JST units, comma-separated)</label><input class="input font-mono" name="subunits" placeholder="4444444444, 8888888888"></div>
+      <div><label class="label">Description (min. 5 characters)</label><input class="input" name="description" value="Demo test subject" minlength="5" required></div>
+      <div class="flex gap-2">
+        <button class="btn-primary">Create</button>
+        <button class="btn-danger" formaction="<%= test_data_remove_subject_path %>" formnovalidate>Remove subject</button>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= render "shared/card", title: "Create a person", endpoint: "POST /testdata/person" do %>
+    <%= form_with url: test_data_person_path, class: "space-y-3" do %>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div><label class="label">NIP</label><input class="input font-mono" name="nip" required></div>
+        <div><label class="label">PESEL</label><input class="input font-mono" name="pesel" required></div>
+      </div>
+      <div><label class="label">Description</label><input class="input" name="description" value="Demo test person" minlength="5" required></div>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox" name="bailiff" value="1"> Bailiff (komornik)</label>
+      <button class="btn-primary">Create</button>
+    <% end %>
+  <% end %>
+
+  <%= render "shared/card", title: "Grant test permissions", endpoint: "POST /testdata/permissions", css: "lg:col-span-2" do %>
+    <%= form_with url: test_data_permissions_path, class: "space-y-4" do %>
+      <div class="grid gap-3 sm:grid-cols-4">
+        <div><label class="label">In context (NIP)</label><input class="input font-mono" name="context_nip" value="<%= settings["nip"] %>" required></div>
+        <div><label class="label">Grantee type</label><select class="input" name="identifier_type"><% %w[Pesel Nip Fingerprint].each do |t| %><option><%= t %></option><% end %></select></div>
+        <div class="sm:col-span-2"><label class="label">Grantee identifier</label><input class="input font-mono" name="identifier" required></div>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <% TokensController::PERMISSIONS.each do |p| %>
+          <label class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm ring-1 ring-slate-200 has-checked:bg-indigo-50 has-checked:ring-indigo-300"><input type="checkbox" class="checkbox" name="permissions[]" value="<%= p %>" <%= "checked" if %w[InvoiceRead InvoiceWrite].include?(p) %>> <%= p %></label>
+        <% end %>
+      </div>
+      <button class="btn-primary">Grant</button>
+    <% end %>
+  <% end %>
+</fieldset>

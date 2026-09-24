@@ -1,0 +1,39 @@
+<%= render "shared/page_header", title: "Sessions & UPO", needs_token: true,
+      subtitle: "Every invoice travels in a session. Open one to see its invoices, rejections with KSeF's reasons, and to download UPOs." %>
+
+<% if @outcome&.error %><%= render "shared/outcome" %><% end %>
+
+<div class="flex items-center gap-2">
+  <% %w[Online Batch].each do |type| %>
+    <%= link_to type, sessions_path(type: type), class: (params[:type] || "Online") == type ? "btn-primary" : "btn-secondary" %>
+  <% end %>
+</div>
+
+<% if @sessions %>
+  <section class="card overflow-hidden">
+    <% if @sessions.empty? %>
+      <p class="p-6 text-sm text-slate-500">No sessions yet. <%= link_to "Issue an invoice", new_invoice_path, class: "text-indigo-600" %> to create one.</p>
+    <% else %>
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs text-slate-600">
+          <tr><th class="px-4 py-2">Created</th><th class="px-4 py-2">Reference</th><th class="px-4 py-2">Status</th><th class="px-4 py-2 text-right">Invoices</th><th></th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% @sessions.each do |s| %>
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 whitespace-nowrap"><%= format_time(s["dateCreated"]) %></td>
+              <td class="px-4 py-3 font-mono text-xs"><%= s["referenceNumber"] %></td>
+              <td class="px-4 py-3"><%= status_badge(s.dig("status", "code"), s.dig("status", "description")) if s["status"] %></td>
+              <td class="px-4 py-3 text-right whitespace-nowrap tabular-nums">
+                <span class="text-emerald-700"><%= s["successfulInvoiceCount"].to_i %> ok</span>
+                <% if s["failedInvoiceCount"].to_i.positive? %> · <span class="text-rose-700"><%= s["failedInvoiceCount"] %> failed</span><% end %>
+                <span class="text-slate-400">/ <%= s["totalInvoiceCount"].to_i %></span>
+              </td>
+              <td class="px-4 py-3 text-right"><%= link_to "Open →", session_path(s["referenceNumber"]), class: "font-semibold text-indigo-600" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </section>
+<% end %>

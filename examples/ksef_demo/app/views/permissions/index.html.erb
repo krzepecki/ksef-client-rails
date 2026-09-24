@@ -1,0 +1,74 @@
+<%= render "shared/page_header", title: "Permissions", needs_token: true,
+      subtitle: "Who may do what in the current context. The gem covers all 19 permission endpoints; the most useful are wired up below." %>
+
+<%= render "shared/outcome" %>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <%= render "shared/card", title: "Queries", css: "lg:col-span-1" do %>
+    <div class="space-y-1.5">
+      <% PermissionsController::QUERIES.each do |key, (label, _)| %>
+        <%= button_to label, permissions_query_path, params: { query: key },
+              class: "w-full rounded-lg px-3 py-2 text-left text-sm ring-1 ring-slate-200 hover:bg-indigo-50 hover:ring-indigo-300 #{'bg-indigo-50 ring-indigo-300' if params[:query] == key}" %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="space-y-6 lg:col-span-2">
+    <%= render "shared/card", title: "Grant permissions to a person", endpoint: "POST /permissions/persons/grants" do %>
+      <%= form_with url: permissions_grant_path, class: "space-y-4" do %>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <div><label class="label">Identifier type</label><select class="input" name="identifier_type" id="identifier-type"><% %w[Pesel Nip Fingerprint].each do |t| %><option><%= t %></option><% end %></select></div>
+          <div class="sm:col-span-2"><label class="label">Identifier <span class="text-slate-400">Fingerprint = the certificate's SHA-256</span></label><input class="input font-mono" name="identifier" required></div>
+          <div><label class="label">First name</label><input class="input" name="first_name" required></div>
+          <div><label class="label">Last name</label><input class="input" name="last_name" required></div>
+          <div><label class="label">Description</label><input class="input" name="description" value="Granted from the demo" minlength="5"></div>
+        </div>
+        <%# A certificate without NIP/PESEL: the person's own identifier, or else a birth date and an identity document. %>
+        <fieldset id="fingerprint-details" class="space-y-3 rounded-lg bg-slate-50 p-3" hidden disabled>
+          <p class="text-xs text-slate-500">The certificate carries no NIP or PESEL. Give the person's PESEL or NIP if they have one (<code>PersonByFingerprintWithIdentifier</code>); otherwise their birth date and identity document (<code>PersonByFingerprintWithoutIdentifier</code>).</p>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <div><label class="label">Person's identifier type</label><select class="input" name="person_identifier_type"><option>Pesel</option><option>Nip</option></select></div>
+            <div class="sm:col-span-2"><label class="label">Person's PESEL / NIP</label><input class="input font-mono" name="person_identifier" minlength="10" maxlength="11" placeholder="empty = the person has neither"></div>
+            <div><label class="label">Birth date</label><input class="input" type="date" name="birth_date"></div>
+            <div><label class="label">Document type</label><input class="input" name="document_type" maxlength="20" placeholder="Passport"></div>
+            <div><label class="label">Document number</label><input class="input font-mono" name="document_number" maxlength="20"></div>
+            <div><label class="label">Document country</label><input class="input font-mono uppercase" name="document_country" maxlength="2" placeholder="DE"></div>
+          </div>
+        </fieldset>
+        <div class="flex flex-wrap gap-2">
+          <% PermissionsController::PERMISSIONS.each do |p| %>
+            <label class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm ring-1 ring-slate-200 has-checked:bg-indigo-50 has-checked:ring-indigo-300"><input type="checkbox" class="checkbox" name="permissions[]" value="<%= p %>" <%= "checked" if p == "InvoiceRead" %>> <%= p %></label>
+          <% end %>
+        </div>
+        <button class="btn-primary">Grant</button>
+      <% end %>
+    <% end %>
+
+    <div class="grid gap-6 sm:grid-cols-2">
+      <%= render "shared/card", title: "Operation status", endpoint: "GET /permissions/operations/{ref}" do %>
+        <%= form_with url: permissions_operation_path, class: "space-y-3" do %>
+          <input class="input font-mono" name="reference" placeholder="Reference number" required>
+          <button class="btn-secondary w-full">Check</button>
+        <% end %>
+      <% end %>
+      <%= render "shared/card", title: "Revoke a permission", endpoint: "DELETE /permissions/common/grants/{id}" do %>
+        <%= form_with url: permissions_revoke_path, class: "space-y-3" do %>
+          <input class="input font-mono" name="permission_id" placeholder="Permission id (from a query)" required>
+          <button class="btn-danger w-full" onclick="return confirm('Revoke this permission?')">Revoke</button>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% content_for :scripts do %>
+<script>
+  (() => {
+    const type = document.getElementById("identifier-type");
+    const details = document.getElementById("fingerprint-details");
+    const apply = () => { details.hidden = details.disabled = type.value !== "Fingerprint"; };
+    type.addEventListener("change", apply);
+    apply();
+  })();
+</script>
+<% end %>

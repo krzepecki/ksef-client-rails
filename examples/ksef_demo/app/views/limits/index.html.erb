@@ -1,0 +1,13 @@
+<%= render "shared/page_header", title: "Limits", needs_token: true,
+      subtitle: "Effective limits for the current context (session sizes), the subject (certificates) and the API rate limits per operation. On TEST they can be changed via test data endpoints." %>
+
+<%= render "shared/outcome" %>
+
+<% unless @outcome %>
+  <section class="card card-body flex flex-wrap items-center justify-between gap-4">
+    <div class="flex gap-6 text-sm text-slate-600">
+      <code>GET /limits/context</code><code>GET /limits/subject</code><code>GET /rate-limits</code>
+    </div>
+    <%= button_to "Load limits", load_limits_path, class: "btn-primary" %>
+  </section>
+<% end %>

@@ -1,0 +1,33 @@
+<%= render "shared/page_header", title: "Batch session", needs_token: true,
+      subtitle: "Many invoices at once: the gem zips them, splits the package into parts, encrypts each (AES-256-CBC), declares the hashes, uploads the parts to presigned URLs and closes the session." %>
+
+<%= render "shared/outcome" %>
+
+<% if @session_reference %>
+  <div class="flex items-center justify-between rounded-xl bg-indigo-50 px-5 py-4 ring-1 ring-indigo-200">
+    <p class="text-sm text-indigo-900">KSeF processes batch sessions asynchronously — check the result and UPO on the session page in a moment.</p>
+    <%= link_to "Open session →", session_path(@session_reference), class: "btn-primary" %>
+  </div>
+<% end %>
+
+<%= render "shared/card", title: "Send a batch", endpoint: "POST /sessions/batch" do %>
+  <%= form_with url: batch_path, class: "space-y-5", data: { busy: "Building, encrypting and uploading the package…" } do %>
+    <div class="space-y-2">
+      <p class="text-sm text-slate-500">
+        Copies the invoice shown on <%= link_to "Issue invoice", new_invoice_path, class: "text-indigo-600" %> — the last one previewed
+        or sent there, from any tab, or the sample — each with a unique <code>FV/BATCH/…</code> number. Now: <strong><%= @base_source %></strong>.
+      </p>
+      <%= render_value(@base_summary) %>
+      <% unless test_environment? %><p class="text-sm font-semibold text-rose-700">On PROD every copy is a real, legally binding invoice.</p><% end %>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div><label class="label">Number of invoices</label><input class="input" type="number" name="count" min="1" max="50" value="<%= params[:count] || 3 %>"></div>
+      <div>
+        <label class="label">Compression</label>
+        <select class="input" name="compression"><option value="zip">ZIP</option><option value="tar_gz" <%= "selected" if params[:compression] == "tar_gz" %>>tar.gz (minitar)</option></select>
+      </div>
+      <div><label class="label">Part size (KB, plaintext)</label><input class="input" type="number" name="part_kb" min="1" max="97656" value="<%= params[:part_kb] || 97_656 %>"><p class="hint">Set it small (e.g. 2) to see a package split into several parts.</p></div>
+    </div>
+    <button class="btn-primary">Send batch</button>
+  <% end %>
+<% end %>

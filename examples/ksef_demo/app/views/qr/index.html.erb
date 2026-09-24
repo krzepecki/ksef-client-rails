@@ -1,0 +1,46 @@
+<%= render "shared/page_header", title: "QR codes",
+      subtitle: "Computed locally — no network. CODE I goes on every invoice issued online; CODE II additionally proves the issuer of an offline invoice with a KSeF Offline certificate." %>
+
+<%= render "shared/outcome" %>
+
+<% if @qr %>
+  <section class="card card-body flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+    <div class="w-56 shrink-0 text-center">
+      <div class="rounded-lg bg-white p-2 ring-1 ring-slate-200 [&_svg]:h-auto [&_svg]:w-full"><%= raw @qr[:svg] %></div>
+    </div>
+    <div class="min-w-0 space-y-2">
+      <div class="text-sm text-slate-500">Verification link</div>
+      <div class="flex items-center gap-1"><a href="<%= @qr[:url] %>" class="font-mono text-xs break-all text-indigo-600" target="_blank" rel="noopener"><%= @qr[:url] %></a><%= copy_button(@qr[:url]) %></div>
+    </div>
+  </section>
+<% end %>
+
+<%= form_with url: qr_online_path, multipart: true, class: "space-y-6", data: { no_busy: true } do %>
+  <div class="grid gap-6 lg:grid-cols-3">
+    <section class="card card-body space-y-4 lg:col-span-2">
+      <div class="flex items-center justify-between"><h2 class="card-title">Invoice XML</h2><span class="text-xs text-slate-500">The hash is computed over these exact bytes</span></div>
+      <textarea class="input input-mono" name="invoice_xml" rows="16" spellcheck="false"><%= @invoice_xml %></textarea>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div><label class="label">Seller NIP</label><input class="input font-mono" name="seller_nip" value="<%= params[:seller_nip] || settings["nip"] %>"></div>
+        <div><label class="label">Issue date (P_1)</label><input class="input" type="date" name="issue_date" value="<%= params[:issue_date] || Ksef::PolishTime.today.iso8601 %>"></div>
+      </div>
+    </section>
+
+    <div class="space-y-6">
+      <section class="card card-body space-y-3">
+        <h2 class="card-title">CODE I — online</h2>
+        <p class="text-sm text-slate-500"><code>/invoice/{NIP}/{DD-MM-YYYY}/{SHA-256}</code></p>
+        <button class="btn-primary w-full">Generate CODE I</button>
+      </section>
+
+      <section class="card card-body space-y-3">
+        <h2 class="card-title">CODE II — offline</h2>
+        <p class="text-sm text-slate-500">The link is signed with the certificate key (RSASSA-PSS or ECDSA P-256). Context: NIP <span class="font-mono"><%= settings["nip"] %></span>.</p>
+        <div><label class="label">KSeF Offline certificate (PEM/DER/.p12)</label><input type="file" name="certificate_file" class="block w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-2 file:py-1.5"></div>
+        <div><label class="label">Private key (if separate)</label><input type="file" name="key_file" class="block w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-2 file:py-1.5"></div>
+        <div><label class="label">Password</label><input class="input" type="password" name="certificate_password" autocomplete="off"></div>
+        <button class="btn-secondary w-full" formaction="<%= qr_offline_path %>">Generate CODE II</button>
+      </section>
+    </div>
+  </div>
+<% end %>

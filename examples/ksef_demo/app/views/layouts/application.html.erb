@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= [content_for(:title), "KSeF demo"].compact.join(" · ") %></title>
+  <%= csrf_meta_tags %>
+  <%# Tailwind's browser build — no asset pipeline in this demo; not meant for production. Pinned with
+      SRI: these pages hold tokens and take key files. %>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js"
+          integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB"
+          crossorigin="anonymous"></script>
+  <style type="text/tailwindcss">
+    @utility card { @apply rounded-xl bg-white shadow-sm ring-1 ring-slate-200; }
+    @utility card-body { @apply p-5 sm:p-6; }
+    @utility card-title { @apply text-base font-semibold text-slate-900; }
+    @utility card-sub { @apply mt-1 text-sm text-slate-500; }
+    @utility label { @apply mb-1 block text-xs font-medium text-slate-600; }
+    @utility input { @apply block w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs ring-1 ring-slate-300 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-600 focus:outline-none; }
+    @utility input-mono { @apply font-mono text-xs; }
+    @utility hint { @apply mt-1 text-xs text-slate-500; }
+    @utility btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold shadow-xs transition disabled:cursor-not-allowed disabled:opacity-50; }
+    @utility btn-primary { @apply btn bg-indigo-600 text-white hover:bg-indigo-500; }
+    @utility btn-secondary { @apply btn bg-white text-slate-900 ring-1 ring-slate-300 ring-inset hover:bg-slate-50; }
+    @utility btn-danger { @apply btn bg-white text-rose-700 ring-1 ring-rose-200 ring-inset hover:bg-rose-50; }
+    @utility btn-success { @apply btn bg-emerald-600 text-white hover:bg-emerald-500; }
+    @utility checkbox { @apply size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600; }
+    @layer base { code { @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.8em] text-slate-800; } }
+  </style>
+</head>
+<body class="h-full text-slate-900 antialiased">
+  <div class="min-h-full">
+    <%# Sidebar %>
+    <aside class="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-slate-900 lg:flex">
+      <div class="flex h-16 items-center gap-3 px-5">
+        <div class="grid size-9 place-items-center rounded-lg bg-indigo-500 text-sm font-bold text-white">K</div>
+        <div>
+          <div class="text-sm font-semibold text-white">KSeF demo</div>
+          <div class="text-xs text-slate-400">ksef-client-rails <%= Ksef::VERSION %></div>
+        </div>
+      </div>
+      <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+        <% ApplicationHelper::NAVIGATION.each do |group, items| %>
+          <div>
+            <% if group %><div class="mb-2 px-3 text-xs font-semibold tracking-wide text-slate-500 uppercase"><%= group %></div><% end %>
+            <div class="space-y-1">
+              <% items.each do |label, path, icon_name| %><%= nav_link(label, path, icon_name) %><% end %>
+            </div>
+          </div>
+        <% end %>
+      </nav>
+      <div class="border-t border-slate-800 p-4 text-xs text-slate-500">
+        Local demo · state is kept in memory — restarting the server logs you out.
+      </div>
+    </aside>
+
+    <div class="lg:pl-64">
+      <%# Top bar: environment, context and token status %>
+      <header class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <details class="relative lg:hidden">
+          <summary class="btn-secondary list-none">Menu</summary>
+          <div class="absolute left-0 mt-2 w-64 space-y-4 rounded-xl bg-slate-900 p-3 shadow-xl">
+            <% ApplicationHelper::NAVIGATION.each do |_group, items| %>
+              <% items.each do |label, path, icon_name| %><%= nav_link(label, path, icon_name) %><% end %>
+            <% end %>
+          </div>
+        </details>
+        <div class="flex flex-1 flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <%= environment_badge %>
+          <span class="text-slate-500">Context NIP <span class="font-mono text-slate-900"><%= settings["nip"] %></span></span>
+          <span class="hidden text-slate-400 sm:inline"><%= ksef_config.api_url %></span>
+        </div>
+        <% if authenticated? %>
+          <div class="flex items-center gap-2 text-sm">
+            <span class="relative flex size-2.5"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex size-2.5 rounded-full bg-emerald-500"></span></span>
+            <span class="font-medium">Authenticated</span>
+            <% if (until_time = access_token_valid_until) %>
+              <span class="hidden text-slate-500 sm:inline" data-expires="<%= until_time.iso8601 %>">· token valid until <%= format_time(until_time) %></span>
+            <% end %>
+          </div>
+        <% else %>
+          <%= link_to "Sign in to KSeF", auth_path, class: "btn-primary" %>
+        <% end %>
+      </header>
+
+      <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+        <% if flash[:notice] %>
+          <div class="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-200"><%= flash[:notice] %></div>
+        <% end %>
+        <% if flash[:alert] %>
+          <div class="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-200"><%= flash[:alert] %></div>
+        <% end %>
+        <%= yield %>
+      </main>
+    </div>
+  </div>
+
+  <%# Busy overlay — KSeF polling can take a while, the buttons stay locked meanwhile. %>
+  <div id="busy" class="fixed inset-0 z-50 hidden place-items-center bg-slate-900/40 backdrop-blur-sm">
+    <div class="flex items-center gap-4 rounded-xl bg-white px-6 py-5 shadow-xl">
+      <svg class="size-6 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-20"/><path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+      <div>
+        <div class="font-semibold" id="busy-title">Talking to KSeF…</div>
+        <div class="text-sm text-slate-500">Polling can take up to ~90 s. <span id="busy-clock" class="font-mono">0 s</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Copy-to-clipboard buttons.
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-copy]");
+      if (!btn) return;
+      navigator.clipboard.writeText(btn.dataset.copy);
+      const old = btn.innerHTML;
+      btn.textContent = "Copied";
+      setTimeout(() => (btn.innerHTML = old), 1200);
+    });
+
+    // Forms that call KSeF show the overlay; downloads (data-no-busy) do not.
+    document.addEventListener("submit", (e) => {
+      const submitter = e.submitter;
+      if (e.target.dataset.noBusy !== undefined || submitter?.dataset.noBusy !== undefined) return;
+      const overlay = document.getElementById("busy");
+      document.getElementById("busy-title").textContent = submitter?.dataset.busy || e.target.dataset.busy || "Talking to KSeF…";
+      overlay.classList.replace("hidden", "grid");
+      const started = Date.now();
+      setInterval(() => (document.getElementById("busy-clock").textContent = Math.round((Date.now() - started) / 1000) + " s"), 500);
+    });
+    // Coming back via the browser's back button must not leave the overlay on.
+    window.addEventListener("pageshow", () => document.getElementById("busy").classList.replace("grid", "hidden"));
+
+    // Tabs: [data-tabs] container, [data-tab="name"] buttons, [data-panel="name other"] panels. A hidden
+    // <fieldset> panel is also disabled, so its fields are neither validated nor submitted.
+    document.querySelectorAll("[data-tabs]").forEach((root) => {
+      const show = (name) => {
+        root.querySelectorAll("[data-tab]").forEach((t) => t.setAttribute("aria-selected", t.dataset.tab === name));
+        root.querySelectorAll("[data-panel]").forEach((p) => {
+          const on = p.dataset.panel.split(" ").includes(name);
+          p.classList.toggle("hidden", !on);
+          if (p.tagName === "FIELDSET") p.disabled = !on;
+        });
+        root.dispatchEvent(new CustomEvent("tabchange", { detail: name }));
+      };
+      root.querySelectorAll("[data-tab]").forEach((t) => t.addEventListener("click", () => show(t.dataset.tab)));
+      show(root.dataset.tabs || root.querySelector("[data-tab]").dataset.tab);
+    });
+  </script>
+  <%= yield :scripts %>
+</body>
+</html>

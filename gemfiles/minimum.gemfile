@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+# The lowest runtime versions the gemspec allows; CI runs the suite against them
+# (BUNDLE_GEMFILE=gemfiles/minimum.gemfile).
+source "https://rubygems.org"
+
+gemspec path: ".."
+
+gem "base64", "0.2.0"
+gem "bigdecimal", "3.1.0"
+gem "connection_pool", "2.4.0"
+gem "faraday", "2.5.0"
+gem "faraday-net_http_persistent", "2.3.1"
+gem "logger", "1.5.0"
+gem "net-http-persistent", "4.0.4"
+gem "nokogiri", "1.19.1"
+gem "rubyzip", "3.4.0"

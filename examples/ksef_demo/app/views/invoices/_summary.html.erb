@@ -1,0 +1,67 @@
+<aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">
+  <section class="card overflow-hidden" data-panel="typical full">
+    <div class="bg-slate-900 px-5 py-4 text-white">
+      <div class="text-xs tracking-wide text-slate-400 uppercase">Total due</div>
+      <div class="mt-1 text-3xl font-bold tabular-nums" id="gross-total"><%= draft_money { draft.gross_total } %></div>
+    </div>
+    <div class="space-y-2 p-5 text-sm">
+      <div id="rate-rows" class="space-y-1"></div>
+      <div class="flex justify-between border-t border-slate-100 pt-2"><span class="text-slate-500">Net</span><span class="tabular-nums" id="net-total"><%= draft_money { draft.net_total } %></span></div>
+      <div class="flex justify-between"><span class="text-slate-500">VAT</span><span class="tabular-nums" id="vat-total"><%= draft_money { draft.vat_total } %></span></div>
+    </div>
+  </section>
+  <section class="card card-body hidden text-sm text-slate-600" data-panel="schema xml">
+    On this tab you write the amounts (<code>P_13_x</code>, <code>P_14_x</code>, <code>P_15</code>) yourself — nothing is computed.
+  </section>
+
+  <% if (error = @build_error) %>
+    <div class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-200">
+      <div class="font-semibold">The form cannot be turned into an invoice</div>
+      <% if error.is_a?(Ksef::SchemaValidationError) && error.messages.present? %>
+        <p class="mt-1 text-xs">The builder's XML does not match the FA(3) schema:</p>
+        <ul class="mt-1 list-disc space-y-1 pl-5 text-xs"><% error.messages.each do |m| %><li><%= m %></li><% end %></ul>
+      <% else %>
+        <p class="mt-1 text-xs"><%= error.message %></p>
+      <% end %>
+      <p class="mt-2 text-xs text-rose-700">Nothing was sent.</p>
+    </div>
+  <% end %>
+
+  <% if @validation %>
+    <% if @validation.empty? %>
+      <div class="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 ring-1 ring-emerald-200"><%= icon(:check) %> Valid FA(3) document</div>
+    <% else %>
+      <div class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-200">
+        <div class="font-semibold">Schema errors (<%= @validation.size %>)</div>
+        <ul class="mt-1 list-disc space-y-1 pl-5 text-xs"><% @validation.each do |m| %><li><%= m %></li><% end %></ul>
+      </div>
+    <% end %>
+  <% end %>
+
+  <section class="card card-body space-y-3">
+    <button class="btn-secondary w-full" formaction="<%= preview_invoices_path %>" data-no-busy>Validate &amp; preview XML</button>
+    <button class="btn-primary w-full py-3! text-base!" <%= "disabled" unless authenticated? %>>Send to KSeF →</button>
+    <% unless authenticated? %><p class="text-center text-xs text-amber-700"><%= link_to "Authenticate", auth_path, class: "underline" %> to send.</p><% end %>
+    <label class="flex items-start gap-2 text-xs text-slate-600">
+      <input type="checkbox" name="skip_validation" value="1" class="checkbox mt-0.5">
+      <span>Skip local XSD validation (XML and All fields tabs — the Typical/Full form is always checked by the builder) — to see a real KSeF rejection (e.g. 450 with <code>status.details</code>)</span>
+    </label>
+  </section>
+
+  <% if session[:recent_invoices].present? %>
+    <section class="card card-body">
+      <h2 class="mb-3 text-sm font-semibold">Recently sent</h2>
+      <ul class="space-y-3 text-sm">
+        <% session[:recent_invoices].each do |inv| %>
+          <li>
+            <div class="flex justify-between gap-2"><span class="font-medium"><%= inv["number"] %></span><span class="tabular-nums text-slate-500"><%= inv["gross"] %> PLN</span></div>
+            <div class="flex items-center justify-between gap-2">
+              <%= link_to inv["ksef_number"], session_path(inv["session"]), class: "truncate font-mono text-xs text-indigo-600" %>
+              <%= link_to "UPO", invoice_upo_session_path(inv["session"], inv["invoice_reference"]), class: "text-xs text-slate-500 hover:text-slate-900" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+</aside>

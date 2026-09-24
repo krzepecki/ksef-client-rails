@@ -1,0 +1,18 @@
+/.bundle/
+/vendor/bundle
+/pkg/
+/tmp/
+/coverage/
+*.gem
+Gemfile.lock
+.rspec_status
+.byebug_history
+
+# Development tooling (oracle) — not packaged into the gem
+/tools/oracle/venv/
+__pycache__/
+*.pyc
+
+# Internal documentation — kept locally, not published
+/docs/
+.DS_Store

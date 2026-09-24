@@ -1,0 +1,11 @@
+<%# A titled card; the body comes from the block. %>
+<section class="card <%= local_assigns[:css] %>">
+  <div class="card-body space-y-4">
+    <div>
+      <h2 class="card-title"><%= title %></h2>
+      <% if local_assigns[:endpoint] %><code class="mt-1 inline-block text-[11px]! text-slate-500!"><%= endpoint %></code><% end %>
+      <% if local_assigns[:subtitle] %><p class="card-sub"><%= subtitle %></p><% end %>
+    </div>
+    <%= yield %>
+  </div>
+</section>

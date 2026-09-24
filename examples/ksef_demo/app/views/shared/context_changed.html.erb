@@ -1,0 +1,12 @@
+<%# Rendered by ApplicationController#verify_page_context. %>
+<%= render "shared/page_header", title: "Nothing was sent" %>
+
+<section class="card card-body space-y-3 ring-rose-300">
+  <p class="text-sm text-slate-700">
+    The page you submitted showed <strong><%= @shown_context %></strong>, but the session is now on
+    <strong><%= @current_context %></strong> — it was changed in another tab, or by a request still running
+    there. Nothing was sent to KSeF.
+  </p>
+  <p class="text-sm text-slate-500">Check the environment and NIP on the Overview page, then open the page again from the menu.</p>
+  <%= link_to "Overview", root_path, class: "btn-primary" %>
+</section>

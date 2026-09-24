@@ -1,0 +1,65 @@
+<%= render "shared/page_header", title: "Certificates", needs_token: true,
+      subtitle: "KSeF-issued certificates for authentication or offline invoicing. The CSR is generated here from the enrollment data; the private key is offered for download once." %>
+
+<div class="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-200">
+  Enrollment data and new certificates are available only after signing in with an <strong>XAdES signature</strong> — a session opened with a KSeF token cannot request certificates (KSeF documentation, <code>certyfikaty-KSeF.md</code>).
+</div>
+
+<%= render "shared/outcome" %>
+
+<% if @key_path || @cert_path %>
+  <section class="card card-body flex flex-wrap items-center gap-3 ring-emerald-300">
+    <% if @key_path %>
+      <p class="flex-1 text-sm">The private key for this request exists only here — <strong>download it now</strong> (valid for 30 min, one server session).</p>
+      <%= link_to "Download private key", @key_path, class: "btn-success" %>
+    <% end %>
+    <% if @cert_path %><%= link_to "Download certificate (PEM)", @cert_path, class: "btn-success" %><% end %>
+  </section>
+<% end %>
+
+<% if @certificates %>
+  <%= render "shared/card", title: "Your certificates" do %><%= render_value(@certificates) %><% end %>
+<% end %>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <%= render "shared/card", title: "Request a certificate", endpoint: "POST /certificates/enrollments" do %>
+    <%= form_with url: certificates_enroll_path, class: "space-y-4", data: { busy: "Generating the CSR and submitting…" } do %>
+      <div><label class="label">Certificate name</label><input class="input" name="certificate_name" value="Demo <%= Date.current %>" required></div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div><label class="label">Type</label><select class="input" name="certificate_type"><option>Authentication</option><option>Offline</option></select></div>
+        <div><label class="label">Key</label><select class="input" name="key_type"><option value="ec">EC P-256 (recommended)</option><option value="rsa">RSA 2048</option></select></div>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button class="btn-primary">Generate CSR &amp; enroll</button>
+        <button class="btn-secondary" formaction="<%= certificates_enrollment_data_path %>">Show enrollment data</button>
+        <button class="btn-secondary" formaction="<%= certificates_limits_path %>">Limits</button>
+      </div>
+    <% end %>
+  <% end %>
+
+  <div class="space-y-6">
+    <%= render "shared/card", title: "Enrollment status", endpoint: "GET /certificates/enrollments/{ref}" do %>
+      <%= form_with url: certificates_enrollment_status_path, class: "flex gap-2" do %>
+        <input class="input font-mono" name="reference" placeholder="Enrollment reference number" required>
+        <button class="btn-secondary shrink-0">Check</button>
+      <% end %>
+    <% end %>
+    <%= render "shared/card", title: "List", endpoint: "POST /certificates/query" do %>
+      <%= form_with url: certificates_list_path, class: "flex flex-wrap gap-2" do %>
+        <select class="input w-auto!" name="status"><option value="">Any status</option><% %w[Active Blocked Revoked Expired].each do |s| %><option><%= s %></option><% end %></select>
+        <select class="input w-auto!" name="type"><option value="">Any type</option><option>Authentication</option><option>Offline</option></select>
+        <button class="btn-secondary">List</button>
+      <% end %>
+    <% end %>
+    <%= render "shared/card", title: "Retrieve or revoke by serial number" do %>
+      <%= form_with url: certificates_retrieve_path, class: "space-y-3" do %>
+        <input class="input font-mono" name="serial" placeholder="Certificate serial number" required>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn-secondary">Retrieve (PEM)</button>
+          <select class="input w-auto!" name="reason"><% %w[Unspecified Superseded KeyCompromise].each do |r| %><option><%= r %></option><% end %></select>
+          <button class="btn-danger" formaction="<%= certificates_revoke_path %>" onclick="return confirm('Revoke this certificate?')">Revoke</button>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

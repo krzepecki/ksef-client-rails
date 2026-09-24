@@ -1,0 +1,142 @@
+<%= render "shared/page_header", title: "Authentication",
+      subtitle: "Every method ends the same way: challenge → signed or encrypted request → polling → token redemption. The access and refresh tokens are kept in the session for the other pages." %>
+
+<%= render "shared/outcome" %>
+
+<%# Current state %>
+<section class="card">
+  <div class="card-body flex flex-wrap items-center justify-between gap-6">
+    <% if authenticated? %>
+      <div class="flex items-center gap-4">
+        <div class="grid size-12 place-items-center rounded-full bg-emerald-100 text-emerald-700"><%= icon(:check, "size-6") %></div>
+        <div>
+          <div class="font-semibold">Signed in to <%= settings["environment"].upcase %> as NIP <span class="font-mono"><%= settings["nip"] %></span></div>
+          <div class="text-sm text-slate-500">
+            via <%= settings["auth_method"] %>
+            <% if settings["access_valid_until"] %>· access token until <%= format_time(settings["access_valid_until"]) %><% end %>
+            <% if settings["refresh_valid_until"] %>· refresh token until <%= format_time(settings["refresh_valid_until"]) %><% end %>
+          </div>
+          <% if settings["auth_reference"] %><div class="font-mono text-xs text-slate-400"><%= settings["auth_reference"] %></div><% end %>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <%= button_to "Refresh access token", auth_refresh_path, class: "btn-secondary", form: { data: { busy: "Refreshing…" } } %>
+        <%= button_to "List auth sessions", auth_sessions_path, class: "btn-secondary" %>
+        <%= button_to "Sign out", auth_logout_path, method: :delete, class: "btn-danger" %>
+      </div>
+    <% else %>
+      <div class="flex items-center gap-4">
+        <div class="grid size-12 place-items-center rounded-full bg-slate-100 text-slate-500"><%= icon(:key, "size-6") %></div>
+        <div>
+          <div class="font-semibold">Not signed in</div>
+          <div class="text-sm text-slate-500">Context NIP <span class="font-mono"><%= settings["nip"] %></span> on <%= settings["environment"].upcase %> — change it on the <%= link_to "Overview", root_path, class: "text-indigo-600" %> page.</div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</section>
+
+<% if @auth_sessions %>
+  <%= render "shared/card", title: "Authentication sessions", endpoint: "GET /auth/sessions" do %>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead><tr class="text-left text-xs text-slate-500"><th class="py-2 pr-4">Started</th><th class="pr-4">Method</th><th class="pr-4">Status</th><th class="pr-4">Refresh valid until</th><th class="pr-4">Reference</th><th></th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          <% @auth_sessions.each do |s| %>
+            <tr>
+              <td class="py-2 pr-4 whitespace-nowrap"><%= format_time(s["startDate"]) %></td>
+              <td class="pr-4"><%= s.dig("authenticationMethodInfo", "displayName") || s["authenticationMethod"] %></td>
+              <td class="pr-4"><%= s["status"] ? status_badge(s.dig("status", "code"), s.dig("status", "description")) : "—" %></td>
+              <td class="pr-4 whitespace-nowrap"><%= format_time(s["refreshTokenValidUntil"]) %></td>
+              <td class="pr-4 font-mono text-xs"><%= s["referenceNumber"] %> <%= pill("current", :green) if s["isCurrent"] %></td>
+              <td class="text-right"><%= button_to "Revoke", auth_revoke_path(s["referenceNumber"]), class: "btn-danger py-1! text-xs!" unless s["isCurrent"] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+<% end %>
+
+<% if @certificate_info || @signed_xml %>
+  <%= render "shared/card", title: "Signature diagnostics", subtitle: "KSeF answers 9105 for every signature problem without saying which — start from these." do %>
+    <% if @certificate_info %><%= render_value(@certificate_info) %><% end %>
+    <% if @signed_xml %>
+      <p class="text-sm text-slate-500">The document sent to <code>POST /auth/xades-signature</code> — public certificate only, no private key, safe to attach to a bug report.</p>
+      <%= code_block(@signed_xml) %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<section class="card" data-tabs="<%= params[:tab] || 'token' %>">
+  <div class="flex gap-1 border-b border-slate-200 px-4 pt-3 text-sm font-medium">
+    <% { "token" => "KSeF token", "certificate" => "Certificate (XAdES)", "manual" => "Paste tokens" }.each do |tab, label| %>
+      <button type="button" data-tab="<%= tab %>" class="-mb-px rounded-t-lg border-b-2 border-transparent px-4 py-2 text-slate-500 hover:text-slate-900 aria-selected:border-indigo-600 aria-selected:text-indigo-700"><%= label %></button>
+    <% end %>
+  </div>
+
+  <div data-panel="token" class="card-body">
+    <%= form_with url: auth_token_path, class: "max-w-xl space-y-4", data: { busy: "Authenticating with the KSeF token…" } do %>
+      <input type="hidden" name="tab" value="token">
+      <p class="text-sm text-slate-500">The token is encrypted with the Ministry of Finance public key (RSA-OAEP, SHA-256) together with the challenge timestamp. Generate one in the KSeF app or on the <%= link_to "KSeF tokens", tokens_path, class: "text-indigo-600" %> page.</p>
+      <div>
+        <label class="label" for="ksef_token">KSeF token</label>
+        <input class="input input-mono" id="ksef_token" name="ksef_token" type="password" autocomplete="off" required placeholder="20250101-EC-…|nip-5555555555|…">
+      </div>
+      <button class="btn-primary">Authenticate</button>
+    <% end %>
+  </div>
+
+  <div data-panel="certificate" class="card-body hidden">
+    <%= form_with url: auth_certificate_path, multipart: true, class: "space-y-4", data: { busy: "Signing and authenticating…" } do %>
+      <input type="hidden" name="tab" value="certificate">
+      <p class="max-w-3xl text-sm text-slate-500">
+        XAdES-BASELINE-B signed <code>AuthTokenRequest</code>. Accepts a <code>*.cert</code> + <code>*.key</code> pair (PEM or DER), both in one PEM file, or a PKCS#12.
+        For a NIP context the subject needs <code>organizationIdentifier=VATPL-&lt;NIP&gt;</code> (seal) or <code>serialNumber=TINPL-&lt;NIP&gt;</code> (personal).
+        Self-signed certificates work on <strong>TEST</strong> only.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="label">Certificate — PEM, DER, .p12/.pfx</label>
+          <input type="file" name="certificate_file" required class="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100">
+        </div>
+        <div>
+          <label class="label">Private key — only if not in the file above</label>
+          <input type="file" name="key_file" class="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold file:text-slate-700 hover:file:bg-slate-200">
+        </div>
+        <div>
+          <label class="label" for="certificate_password">Password (PKCS#12 / encrypted key)</label>
+          <input class="input" id="certificate_password" type="password" name="certificate_password" autocomplete="off">
+        </div>
+        <div>
+          <label class="label" for="sit">Subject identifier type</label>
+          <select class="input" id="sit" name="subject_identifier_type">
+            <option value="certificate_subject">certificateSubject — NIP/PESEL from the subject</option>
+            <option value="certificate_fingerprint">certificateFingerprint — permissions granted to the fingerprint</option>
+          </select>
+        </div>
+      </div>
+      <label class="flex items-center gap-3 text-sm"><input type="checkbox" name="verify_chain" value="1" class="checkbox"> Verify the certificate chain (<code>verifyCertificateChain</code>)</label>
+      <details class="rounded-lg bg-slate-50 p-3 text-sm">
+        <summary class="cursor-pointer font-medium">Create a throwaway TEST seal certificate</summary>
+        <% openssl = ["openssl req -x509 -newkey rsa:2048 -nodes -days 7 \\",
+                      "  -keyout demo_key.pem -out demo_cert.pem \\",
+                      "  -subj \"/C=PL/O=Demo sp. z o.o./CN=Demo/2.5.4.97=VATPL-#{settings['nip']}\"",
+                      "cat demo_cert.pem demo_key.pem > demo_bundle.pem"].join("\n") %>
+        <div class="mt-3"><%= code_block(openssl) %></div>
+        <p class="hint">Test subjects and persons for other scenarios: <%= link_to "Test data", test_data_path, class: "text-indigo-600" %>.</p>
+      </details>
+      <button class="btn-primary">Authenticate with the certificate</button>
+    <% end %>
+  </div>
+
+  <div data-panel="manual" class="card-body hidden">
+    <%= form_with url: auth_manual_path, class: "max-w-3xl space-y-4", data: { no_busy: true } do %>
+      <input type="hidden" name="tab" value="manual">
+      <p class="text-sm text-slate-500">Already have tokens from another tool? Paste them — no call to KSeF is made.</p>
+      <div><label class="label">Access token</label><textarea class="input input-mono" name="access_token" rows="3"><%= settings["access_token"] %></textarea></div>
+      <div><label class="label">Refresh token</label><textarea class="input input-mono" name="refresh_token" rows="3"><%= settings["refresh_token"] %></textarea></div>
+      <button class="btn-primary">Save tokens</button>
+    <% end %>
+  </div>
+</section>

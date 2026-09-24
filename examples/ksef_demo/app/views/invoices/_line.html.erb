@@ -1,0 +1,37 @@
+<% name = ->(attr) { "draft[lines][#{index}][#{attr}]" } %>
+<% amount_hint = "A number such as 1234,56 or 1 234,56 — at most 2 decimal places" %>
+<tbody data-line class="border-b border-slate-100 last:border-0">
+  <tr class="align-top">
+    <td class="px-2 py-2 pt-4 text-xs text-slate-400" data-no></td>
+    <td class="p-1"><input class="input" name="<%= name.(:name) %>" value="<%= line.name %>" placeholder="Product or service" required></td>
+    <td class="p-1"><input class="input text-right tabular-nums user-invalid:ring-rose-500" name="<%= name.(:quantity) %>" value="<%= line.quantity %>" inputmode="decimal" required pattern="<%= InvoiceDraft::QUANTITY_PATTERN %>" title="A number such as 2 or 1,5 — at most 6 decimal places" data-qty></td>
+    <td class="p-1"><input class="input" name="<%= name.(:unit) %>" value="<%= line.unit %>"></td>
+    <td class="p-1"><input class="input text-right tabular-nums user-invalid:ring-rose-500" name="<%= name.(:unit_price) %>" value="<%= line.unit_price %>" inputmode="decimal" placeholder="0.00" required pattern="<%= InvoiceDraft::PRICE_PATTERN %>" title="<%= amount_hint %>" data-price></td>
+    <td class="p-1">
+      <select class="input" name="<%= name.(:rate) %>" data-rate>
+        <% InvoiceDraft::RATES.each do |value, info| %>
+          <option value="<%= value %>" <%= "data-full" if info[:full] %> <%= "selected" if line.rate.to_s == value %>><%= info[:label] %></option>
+        <% end %>
+      </select>
+    </td>
+    <td class="px-2 py-2 pt-4 text-right whitespace-nowrap tabular-nums" data-net></td>
+    <td class="p-1 pt-2.5">
+      <button type="button" data-remove title="Remove line" class="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><%= icon(:x, "size-4") %></button>
+    </td>
+  </tr>
+  <tr>
+    <td></td>
+    <td colspan="7" class="px-1 pb-3">
+      <fieldset data-full-only class="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-2 sm:grid-cols-6">
+        <% { index: ["Index", "Indeks"], gtin: ["GTIN", "GTIN"], pkwiu: ["PKWiU", "PKWiU"], cn: ["CN", "CN"] }.each do |attr, (label, code)| %>
+          <div><label class="label"><%= label %></label><input class="input py-1! font-mono text-xs" name="<%= name.(attr) %>" value="<%= line[attr] %>" title="<%= code %>"></div>
+        <% end %>
+        <div>
+          <label class="label">GTU</label>
+          <select class="input py-1! text-xs" name="<%= name.(:gtu) %>"><option value="">—</option><%= options_for_select(InvoiceDraft::GTU_CODES, line.gtu) %></select>
+        </div>
+        <div><label class="label">Discount <span class="text-slate-400">P_10</span></label><input class="input py-1! text-right text-xs tabular-nums user-invalid:ring-rose-500" name="<%= name.(:discount) %>" value="<%= line.discount %>" inputmode="decimal" placeholder="0.00" pattern="<%= InvoiceDraft::PRICE_PATTERN %>" title="<%= amount_hint %>" data-discount></div>
+      </fieldset>
+    </td>
+  </tr>
+</tbody>

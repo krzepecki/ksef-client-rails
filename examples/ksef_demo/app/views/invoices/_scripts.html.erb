@@ -1,0 +1,169 @@
+<% content_for :scripts do %>
+<script>
+  (() => {
+    const form = document.getElementById("invoice-form");
+    const table = document.getElementById("lines");
+    const tabs = document.getElementById("invoice-tabs");
+    const source = document.getElementById("source");
+    const rates = <%= raw InvoiceDraft::RATES.transform_values { |r| { percent: r[:percent], label: r[:label] } }.to_json %>;
+    const lines = () => [...table.querySelectorAll("tbody[data-line]")];
+
+    // Numbers as the builder reads them (the inputs' patterns), kept exact: a BigInt in units of 10^-places.
+    // undefined = blank, null = malformed.
+    const formats = { 2: new RegExp(`^(?:${<%= raw InvoiceDraft::PRICE_PATTERN.to_json %>})$`, "u"),
+                      6: new RegExp(`^(?:${<%= raw InvoiceDraft::QUANTITY_PATTERN.to_json %>})$`, "u") };
+    function decimal(value, places) {
+      const text = String(value ?? "").trim();
+      if (!text) return undefined;
+      if (!formats[places].test(text)) return null;
+      const [whole, fraction = ""] = text.replace(/[ \u00A0\u202F]/g, "").split(/[.,]/);
+      return BigInt(whole + fraction.padEnd(places, "0").slice(0, places));
+    }
+    // Half away from zero, as BigDecimal::ROUND_HALF_UP.
+    const roundDiv = (x, by) => (x < 0n ? -1n : 1n) * ((x < 0n ? -x : x) + by / 2n) / by;
+    const money = (cents) => cents === null ? "—"
+      : (Number(cents) / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " PLN";
+
+    // --- Typical / Full ---------------------------------------------------------------------
+    // Full-only fieldsets are disabled on Typical (not submitted); full-only rates are hidden there.
+    function applyMode() {
+      const full = source.value === "full";
+      document.querySelectorAll("[data-full-only]").forEach((f) => { f.disabled = !full; f.hidden = !full; });
+      lines().forEach((l) => (l.rows[1].hidden = !full));
+      document.querySelectorAll("[data-rate] option[data-full]").forEach((o) => (o.hidden = !full && !o.selected));
+      if (full) applyBuyerId();
+      else {
+        document.querySelectorAll("[data-buyer-id]").forEach((b) => (b.hidden = b.dataset.buyerId !== "nip"));
+        applyRequired();
+      }
+      applyInvoiceType();
+    }
+    function applyBuyerId() {
+      const type = document.getElementById("buyer-id-type").value;
+      document.querySelectorAll("[data-buyer-id]").forEach((b) => (b.hidden = b.dataset.buyerId !== type));
+      applyRequired();
+    }
+    // Fields the builder needs only in some cases; a hidden field is never required (it would block the submit).
+    function applyRequired() {
+      const full = source.value === "full";
+      const type = full ? document.getElementById("buyer-id-type").value : "nip-or-none";
+      document.querySelectorAll("[data-required-for]").forEach((i) => (i.required = i.dataset.requiredFor.split(" ").includes(type)));
+      document.getElementById("paid-date").required = full && document.getElementById("paid").checked;
+      document.getElementById("bank-account").required = full && document.getElementById("bank-name").value.trim() !== "";
+    }
+    function applyInvoiceType() {
+      const kor = source.value === "full" && document.querySelector("[data-invoice-type]:checked")?.value === "KOR";
+      document.getElementById("correction").classList.toggle("hidden", !kor);
+      document.querySelectorAll("[data-correction-required]").forEach((i) => (i.required = kor));
+    }
+
+    // Net = qty × price − discount, rounded per line; VAT per rate group — the same as the builder. A line
+    // with a missing or malformed number shows "—", and so do the totals.
+    function recalc() {
+      const groups = {};
+      const full = source.value === "full";
+      let valid = true;
+      lines().forEach((line, i) => {
+        line.querySelector("[data-no]").textContent = i + 1;
+        const qty = decimal(line.querySelector("[data-qty]").value, 6);
+        const price = decimal(line.querySelector("[data-price]").value, 2);
+        const given = full ? decimal(line.querySelector("[data-discount]").value, 2) : undefined;
+        const discount = given === undefined ? 0n : given;
+        const ok = qty != null && price != null && discount !== null;
+        const net = ok ? roundDiv(qty * price - discount * 1000000n, 1000000n) : null;
+        line.querySelector("[data-net]").textContent = money(net);
+        valid &&= ok;
+        const rate = line.querySelector("[data-rate]").value;
+        groups[rate] = (groups[rate] ?? 0n) + (net ?? 0n);
+      });
+      let net = 0n, vat = 0n, html = "";
+      Object.keys(rates).filter((r) => r in groups).forEach((r) => {
+        const v = roundDiv(groups[r] * BigInt(rates[r].percent), 100n);
+        net += groups[r]; vat += v;
+        html += `<div class="flex justify-between text-xs text-slate-500"><span>${rates[r].label} · ${money(valid ? groups[r] : null)}</span><span class="tabular-nums">VAT ${money(valid ? v : null)}</span></div>`;
+      });
+      document.getElementById("rate-rows").innerHTML = html;
+      document.getElementById("net-total").textContent = money(valid ? net : null);
+      document.getElementById("vat-total").textContent = money(valid ? vat : null);
+      document.getElementById("gross-total").textContent = money(valid ? net + vat : null);
+      document.getElementById("exemption").classList.toggle("hidden", !("zw" in groups));
+      document.getElementById("exemption-reason").required = "zw" in groups;
+    }
+
+    document.getElementById("add-line").addEventListener("click", () => {
+      const html = document.getElementById("line-template").innerHTML.replaceAll("__INDEX__", Date.now());
+      table.insertAdjacentHTML("beforeend", html);
+      lines().at(-1).querySelector("input").focus();
+      applyMode();
+      recalc();
+    });
+    table.addEventListener("click", (e) => {
+      if (!e.target.closest("[data-remove]") || lines().length === 1) return;
+      e.target.closest("tbody[data-line]").remove();
+      recalc();
+    });
+    form.addEventListener("input", recalc);
+    form.addEventListener("change", (e) => {
+      if (e.target.id === "buyer-id-type") applyBuyerId();
+      if (e.target.matches("[data-invoice-type]")) applyInvoiceType();
+      if (["paid", "bank-name"].includes(e.target.id)) applyRequired();
+    });
+
+    // --- All fields (schema) -----------------------------------------------------------------
+    const schemaRoot = document.getElementById("schema-root");
+    const NS = "<%= Ksef::FormCode::FA3.namespace %>";
+    const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const owner = (el) => el.parentElement.closest("[data-x]");
+    const activeWithin = (el, stop) => {
+      for (let n = el.parentElement; n && n !== stop; n = n.parentElement) if (n.hasAttribute("data-inactive")) return false;
+      return true;
+    };
+
+    // Walks the DOM in document (= schema) order; an element with no text and no children is left out.
+    function serialize(node, root = false) {
+      const name = node.dataset.x;
+      const own = (sel) => [...node.querySelectorAll(sel)].filter((e) => e.closest("[data-x]") === node);
+      const value = (own("[data-xval]")[0]?.value ?? "").trim();
+      const children = [...node.querySelectorAll("[data-x]")]
+        .filter((k) => owner(k) === node && activeWithin(k, node)).map((k) => serialize(k)).join("");
+      if (!value && !children && !root) return "";
+      const attrs = own("[data-xattr]").filter((a) => a.value.trim())
+        .map((a) => ` ${a.dataset.xattr}="${esc(a.value.trim())}"`).join("");
+      return `<${name}${root ? ` xmlns="${NS}"` : ""}${attrs}>${value ? esc(value) : children}</${name}>`;
+    }
+    const schemaXml = () => '<?xml version="1.0" encoding="UTF-8"?>' + serialize(schemaRoot.querySelector("[data-x]"), true);
+    window.ksefSchemaXml = schemaXml; // handy in the console
+
+    schemaRoot.addEventListener("click", (e) => {
+      const add = e.target.closest("[data-xadd]");
+      if (add) {
+        const list = add.closest("[data-xlist]");
+        const item = list.querySelector(":scope > template").content.firstElementChild.cloneNode(true);
+        list.querySelector(":scope > [data-xitems]").append(item);
+        if (item.tagName === "DETAILS") item.open = true;
+      }
+      const remove = e.target.closest("[data-xremove]");
+      if (remove) { e.preventDefault(); remove.closest("[data-x]").remove(); }
+    });
+    schemaRoot.addEventListener("change", (e) => {
+      const select = e.target.closest("[data-xchoice-select]");
+      if (!select) return;
+      select.closest("[data-xchoice]").querySelectorAll(":scope > [data-xbranch]").forEach((b) => {
+        const on = b.dataset.xbranch === select.value;
+        b.hidden = !on;
+        b.toggleAttribute("data-inactive", !on);
+      });
+    });
+    // Registered on the form, so it runs before the page-wide busy overlay handler.
+    form.addEventListener("submit", () => {
+      if (source.value === "schema") document.getElementById("schema-xml").value = schemaXml();
+    });
+    const selftest = document.getElementById("schema-selftest");
+    if (selftest) selftest.textContent = schemaXml();
+
+    tabs.addEventListener("tabchange", (e) => { source.value = e.detail; applyMode(); recalc(); });
+    applyMode();
+    recalc();
+  })();
+</script>
+<% end %>

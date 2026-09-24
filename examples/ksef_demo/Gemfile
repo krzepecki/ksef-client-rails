@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "puma"
+gem "rails", "~> 8.1"
+
+# The KSeF gem from a local path (the directory above examples/).
+gem "ksef-client-rails", path: "../.."
+
+# Optional gem dependency (QR code rendering) — needed for the "QR code" action.
+gem "rqrcode", "~> 2.0"
+
+# Optional gem dependency (tar.gz packages) — needed for the "tar.gz" option of batch and export.
+gem "minitar", "~> 0.9"

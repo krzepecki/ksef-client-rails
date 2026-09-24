@@ -1,0 +1,72 @@
+<%= render "shared/page_header", title: "Browse invoices", needs_token: true,
+      subtitle: "Download a single invoice by its KSeF number or query invoice metadata by date. For whole packages see Export & sync." %>
+
+<%= render "shared/outcome" %>
+
+<% if @invoice_xml %>
+  <%= render "shared/card", title: "Invoice #{@ksef_number}" do %>
+    <div class="flex gap-2"><%= link_to "Download XML", download_invoices_path(@ksef_number), class: "btn-secondary" %></div>
+    <%= code_block(@invoice_xml) %>
+  <% end %>
+<% end %>
+
+<% if @invoices %>
+  <%= render "shared/card", title: "Invoices", subtitle: "Newest first." do %>
+    <div class="overflow-x-auto rounded-lg ring-1 ring-slate-200">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs text-slate-600">
+          <tr><th class="px-3 py-2">Issued</th><th class="px-3 py-2">Number</th><th class="px-3 py-2">Seller</th><th class="px-3 py-2">Buyer</th><th class="px-3 py-2 text-right">Gross</th><th class="px-3 py-2">KSeF number</th><th></th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% @invoices.each do |inv| %>
+            <tr class="hover:bg-slate-50">
+              <td class="px-3 py-2 whitespace-nowrap"><%= inv["issueDate"] %></td>
+              <td class="px-3 py-2 font-medium"><%= inv["invoiceNumber"] %></td>
+              <td class="px-3 py-2"><%= inv.dig("seller", "name") %> <span class="block font-mono text-xs text-slate-400"><%= inv.dig("seller", "nip") %></span></td>
+              <td class="px-3 py-2"><%= inv.dig("buyer", "name") %> <span class="block font-mono text-xs text-slate-400"><%= inv.dig("buyer", "identifier", "value") %></span></td>
+              <td class="px-3 py-2 text-right whitespace-nowrap tabular-nums"><%= inv["grossAmount"] %> <%= inv["currency"] %></td>
+              <td class="px-3 py-2 font-mono text-xs"><%= inv["ksefNumber"] %></td>
+              <td class="px-3 py-2 text-right"><%= link_to "XML", download_invoices_path(inv["ksefNumber"]), class: "text-indigo-600" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+<% end %>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <%= render "shared/card", title: "Download by KSeF number", endpoint: "GET /invoices/ksef/{no}" do %>
+    <%= form_with url: fetch_invoices_path, class: "space-y-3" do %>
+      <input class="input font-mono" name="ksef_number" value="<%= params[:ksef_number] || session[:recent_invoices]&.first&.dig("ksef_number") %>" placeholder="5555555555-20260819-71EF7C800000-EF" required>
+      <button class="btn-primary">Download invoice</button>
+    <% end %>
+  <% end %>
+
+  <%= render "shared/card", title: "Query metadata", endpoint: "POST /invoices/query/metadata" do %>
+    <%= form_with url: metadata_invoices_path, class: "space-y-3" do %>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label class="label">Role</label>
+          <select class="input" name="subject_type">
+            <% { "Subject1" => "Seller (Subject1)", "Subject2" => "Buyer (Subject2)", "Subject3" => "Third party (Subject3)", "SubjectAuthorized" => "Authorized" }.each do |v, l| %>
+              <option value="<%= v %>" <%= "selected" if params[:subject_type] == v %>><%= l %></option>
+            <% end %>
+          </select>
+        </div>
+        <div>
+          <label class="label">Date type</label>
+          <select class="input" name="date_type">
+            <% { "Issue" => "Issue date", "Invoicing" => "Accepted in KSeF", "PermanentStorage" => "Permanently stored" }.each do |v, l| %>
+              <option value="<%= v %>" <%= "selected" if params[:date_type] == v %>><%= l %></option>
+            <% end %>
+          </select>
+        </div>
+        <div><label class="label">From</label><input class="input" type="date" name="date_from" value="<%= params[:date_from] || (Date.current - 30).iso8601 %>"></div>
+        <div><label class="label">To</label><input class="input" type="date" name="date_to" value="<%= params[:date_to] || Date.current.iso8601 %>"></div>
+      </div>
+      <p class="hint">The range may span at most 3 months.</p>
+      <button class="btn-primary">Search</button>
+    <% end %>
+  <% end %>
+</div>

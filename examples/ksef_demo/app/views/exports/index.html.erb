@@ -1,0 +1,68 @@
+<%= render "shared/page_header", title: "Export & sync", needs_token: true,
+      subtitle: "Export asks KSeF to prepare an encrypted invoice package; the gem polls, downloads the parts, checks their SHA-256, decrypts and unzips them. Sync repeats that over High Water Mark windows." %>
+
+<%= render "shared/outcome" %>
+
+<% if @package_path %>
+  <%= render "shared/card", title: "Package contents" do %>
+    <div class="flex flex-wrap gap-2"><%= link_to "Download package", @package_path, class: "btn-success" %></div>
+    <% if @metadata.present? %>
+      <div class="overflow-x-auto rounded-lg ring-1 ring-slate-200">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-left text-xs text-slate-600"><tr><th class="px-3 py-2">Issued</th><th class="px-3 py-2">Number</th><th class="px-3 py-2">Seller</th><th class="px-3 py-2 text-right">Gross</th><th class="px-3 py-2">KSeF number</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <% @metadata.each do |m| %>
+              <tr><td class="px-3 py-2"><%= m["issueDate"] %></td><td class="px-3 py-2"><%= m["invoiceNumber"] %></td><td class="px-3 py-2"><%= m.dig("seller", "name") %></td><td class="px-3 py-2 text-right tabular-nums"><%= m["grossAmount"] %> <%= m["currency"] %></td><td class="px-3 py-2 font-mono text-xs"><%= m["ksefNumber"] %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+    <%= render_value(@files) %>
+  <% end %>
+<% end %>
+
+<% if @synced %>
+  <%= render "shared/card", title: "Synchronised invoices" do %><%= render_value(@synced) %><% end %>
+<% end %>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <%= render "shared/card", title: "Export a package", endpoint: "POST /invoices/exports" do %>
+    <%= form_with url: exports_path, class: "space-y-4", data: { busy: "Waiting for KSeF to prepare the package…" } do %>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label class="label">Role</label>
+          <select class="input" name="subject_type"><% { "Subject1" => "Seller", "Subject2" => "Buyer", "Subject3" => "Third party" }.each do |v, l| %><option value="<%= v %>"><%= l %> (<%= v %>)</option><% end %></select>
+        </div>
+        <div>
+          <label class="label">Date type</label>
+          <select class="input" name="date_type"><% %w[Issue Invoicing PermanentStorage].each do |v| %><option><%= v %></option><% end %></select>
+        </div>
+        <div><label class="label">From</label><input class="input" type="date" name="date_from" value="<%= (Date.current - 30).iso8601 %>"></div>
+        <div><label class="label">To</label><input class="input" type="date" name="date_to" value="<%= Date.current.iso8601 %>"></div>
+      </div>
+      <div class="sm:w-1/2">
+        <label class="label">Compression <span class="text-slate-400">compressionType</span></label>
+        <select class="input" name="compression_type"><option value="Zip">ZIP</option><option value="TarGz">tar.gz (minitar)</option></select>
+      </div>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox" name="only_metadata" value="1"> Metadata only (<code>_metadata.json</code>, no invoice files)</label>
+      <button class="btn-primary">Export</button>
+    <% end %>
+  <% end %>
+
+  <%= render "shared/card", title: "Incremental sync", subtitle: "Sync::Incremental — windows by permanent-storage date, deduplicated by KSeF number." do %>
+    <div class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">Capped by windows and invoices so the page returns quickly. The gem stops by itself once it has caught up (an empty window, or one that does not move the HWM); <code>sync.hwm</code> is where the next run starts.</div>
+    <%= form_with url: exports_sync_path, class: "space-y-4", data: { busy: "Synchronising…" } do %>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div><label class="label">Start HWM</label><input class="input" type="date" name="from" value="<%= (Date.current - 7).iso8601 %>"></div>
+        <div>
+          <label class="label">Role</label>
+          <select class="input" name="subject_type"><% Ksef::Sync::Incremental::SUBJECT_TYPES.each do |s| %><option <%= "selected" if s == "Subject2" %>><%= s %></option><% end %></select>
+        </div>
+        <div><label class="label">Max windows</label><input class="input" type="number" name="windows" min="1" max="5" value="2"></div>
+        <div><label class="label">Max invoices</label><input class="input" type="number" name="max_invoices" min="1" max="200" value="50"></div>
+      </div>
+      <button class="btn-primary">Run sync</button>
+    <% end %>
+  <% end %>
+</div>

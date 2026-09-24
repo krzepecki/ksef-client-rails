@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+  <Naglowek>
+    <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>
+    <WariantFormularza>3</WariantFormularza>
+    <DataWytworzeniaFa>2026-02-01T10:00:00Z</DataWytworzeniaFa>
+    <SystemInfo>ksef-client-rails</SystemInfo>
+  </Naglowek>
+  <Podmiot1>
+    <DaneIdentyfikacyjne>
+      <NIP>5555555555</NIP>
+      <Nazwa>Seller Ltd.</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>PL</KodKraju>
+      <AdresL1>1 Test Street, 00-001 Warsaw</AdresL1>
+    </Adres>
+    <DaneKontaktowe>
+      <Email>invoices@seller.example</Email>
+      <Telefon>+48 22 000 00 00</Telefon>
+    </DaneKontaktowe>
+  </Podmiot1>
+  <Podmiot2>
+    <DaneIdentyfikacyjne>
+      <NIP>1111111111</NIP>
+      <Nazwa>Buyer Inc.</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>PL</KodKraju>
+      <AdresL1>2 Example Street, 00-002 Warsaw</AdresL1>
+    </Adres>
+    <DaneKontaktowe>
+      <Email>accounts@buyer.example</Email>
+    </DaneKontaktowe>
+    <JST>2</JST>
+    <GV>2</GV>
+  </Podmiot2>
+  <Fa>
+    <KodWaluty>PLN</KodWaluty>
+    <P_1>2026-02-01</P_1>
+    <P_1M>Warsaw</P_1M>
+    <P_2>FV/2026/02/1</P_2>
+    <P_6>2026-02-01</P_6>
+    <P_13_1>1900.00</P_13_1>
+    <P_14_1>437.00</P_14_1>
+    <P_13_2>120.00</P_13_2>
+    <P_14_2>9.60</P_14_2>
+    <P_13_3>50.00</P_13_3>
+    <P_14_3>2.50</P_14_3>
+    <P_13_6_1>20.00</P_13_6_1>
+    <P_13_7>30.00</P_13_7>
+    <P_15>2569.10</P_15>
+    <Adnotacje>
+      <P_16>2</P_16>
+      <P_17>2</P_17>
+      <P_18>2</P_18>
+      <P_18A>2</P_18A>
+      <Zwolnienie>
+        <P_19>1</P_19>
+        <P_19A>Art. 43 ust. 1 pkt 37 ustawy o VAT</P_19A>
+      </Zwolnienie>
+      <NoweSrodkiTransportu>
+        <P_22N>1</P_22N>
+      </NoweSrodkiTransportu>
+      <P_23>2</P_23>
+      <PMarzy>
+        <P_PMarzyN>1</P_PMarzyN>
+      </PMarzy>
+    </Adnotacje>
+    <RodzajFaktury>VAT</RodzajFaktury>
+    <FaWiersz>
+      <NrWierszaFa>1</NrWierszaFa>
+      <P_7>Software licence</P_7>
+      <Indeks>LIC-01</Indeks>
+      <GTIN>5901234123457</GTIN>
+      <PKWiU>58.29.50.0</PKWiU>
+      <CN>8523</CN>
+      <P_8A>szt.</P_8A>
+      <P_8B>2</P_8B>
+      <P_9A>1000.00</P_9A>
+      <P_10>100.00</P_10>
+      <P_11>1900.00</P_11>
+      <P_12>23</P_12>
+      <GTU>GTU_12</GTU>
+    </FaWiersz>
+    <FaWiersz>
+      <NrWierszaFa>2</NrWierszaFa>
+      <P_7>Printed manual</P_7>
+      <P_8A>szt.</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>50.00</P_9A>
+      <P_11>50.00</P_11>
+      <P_12>5</P_12>
+    </FaWiersz>
+    <FaWiersz>
+      <NrWierszaFa>3</NrWierszaFa>
+      <P_7>Catering</P_7>
+      <P_8A>szt.</P_8A>
+      <P_8B>3</P_8B>
+      <P_9A>40.00</P_9A>
+      <P_11>120.00</P_11>
+      <P_12>8</P_12>
+    </FaWiersz>
+    <FaWiersz>
+      <NrWierszaFa>4</NrWierszaFa>
+      <P_7>Zero-rated supply</P_7>
+      <P_8A>szt.</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>20.00</P_9A>
+      <P_11>20.00</P_11>
+      <P_12>0 KR</P_12>
+    </FaWiersz>
+    <FaWiersz>
+      <NrWierszaFa>5</NrWierszaFa>
+      <P_7>Insurance</P_7>
+      <P_8A>szt.</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>30.00</P_9A>
+      <P_11>30.00</P_11>
+      <P_12>zw</P_12>
+    </FaWiersz>
+    <Platnosc>
+      <TerminPlatnosci>
+        <Termin>2026-02-15</Termin>
+      </TerminPlatnosci>
+      <FormaPlatnosci>6</FormaPlatnosci>
+      <RachunekBankowy>
+        <NrRB>17100000000000000000000001</NrRB>
+        <NazwaBanku>Example Bank</NazwaBanku>
+      </RachunekBankowy>
+    </Platnosc>
+  </Fa>
+  <Stopka>
+    <Informacje>
+      <StopkaFaktury>Thank you for your business.</StopkaFaktury>
+    </Informacje>
+    <Rejestry>
+      <KRS>0000123456</KRS>
+      <REGON>123456785</REGON>
+      <BDO>000012345</BDO>
+    </Rejestry>
+  </Stopka>
+</Faktura>

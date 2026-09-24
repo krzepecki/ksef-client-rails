@@ -1,0 +1,40 @@
+<%= render "shared/page_header", title: "Issue invoice", needs_token: true,
+      subtitle: "Pick how much of the FA(3) form you need — the gem validates the document against the XSD, encrypts it (AES-256-CBC), sends it in an online session and fetches the UPO." %>
+
+<% tab = @tab || "typical" %>
+<%= form_with url: invoices_path, id: "invoice-form", data: { busy: "Sending the invoice to KSeF…" } do %>
+  <input type="hidden" name="source" id="source" value="<%= tab %>">
+
+  <div class="grid gap-6 lg:grid-cols-3" data-tabs="<%= tab %>" id="invoice-tabs">
+    <div class="min-w-0 space-y-6 lg:col-span-2">
+      <div class="grid grid-cols-2 gap-1 rounded-lg bg-slate-200/70 p-1 text-sm font-medium sm:grid-cols-4">
+        <% { "typical" => ["Typical", "the everyday invoice"], "full" => ["Full", "corrections, annotations, all rates"],
+             "schema" => ["All fields", "every FA(3) element"], "xml" => ["XML", "edit the document"] }.each do |key, (label, hint)| %>
+          <button type="button" data-tab="<%= key %>" class="rounded-md px-3 py-1.5 text-left text-slate-600 aria-selected:bg-white aria-selected:text-slate-900 aria-selected:shadow-sm">
+            <span class="block"><%= label %></span><span class="block text-[11px] font-normal text-slate-500"><%= hint %></span>
+          </button>
+        <% end %>
+      </div>
+
+      <fieldset data-panel="typical full" class="min-w-0 space-y-6">
+        <%= render "draft_form", draft: @draft %>
+      </fieldset>
+
+      <fieldset data-panel="schema" class="hidden min-w-0 space-y-3">
+        <%= render "schema_tab", xml: @xml %>
+      </fieldset>
+
+      <fieldset data-panel="xml" class="hidden min-w-0 space-y-3">
+        <div class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
+          The XML below is sent as-is — edit it to try other structures or provoke rejections. “Validate &amp; preview”
+          checks it against the schema. Switching tabs does not carry edits over: each tab shows the document from the last page load.
+        </div>
+        <textarea name="invoice_xml" rows="30" spellcheck="false" class="input input-mono leading-relaxed"><%= @xml %></textarea>
+      </fieldset>
+    </div>
+
+    <%= render "summary", draft: @draft %>
+  </div>
+<% end %>
+
+<%= render "scripts" %>

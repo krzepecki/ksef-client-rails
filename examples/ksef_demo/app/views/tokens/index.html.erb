@@ -1,0 +1,70 @@
+<%= render "shared/page_header", title: "KSeF tokens", needs_token: true,
+      subtitle: "Long-lived credentials for systems. A token carries the permissions chosen at generation and can be used to sign in on the Authentication page." %>
+
+<%= render "shared/outcome" %>
+
+<% if @new_token %>
+  <section class="card card-body space-y-3 ring-emerald-300">
+    <h2 class="card-title text-emerald-800">Your new token — copy it now</h2>
+    <p class="text-sm text-slate-500">KSeF shows the secret only once. It becomes usable after the status turns <code>Active</code>.</p>
+    <%= code_block(@new_token, max_height: "max-h-40") %>
+  </section>
+<% end %>
+
+<% if @tokens %>
+  <%= render "shared/card", title: "Tokens" do %>
+    <% if @tokens.empty? %><p class="text-sm text-slate-500">No tokens.</p><% else %>
+      <div class="overflow-x-auto rounded-lg ring-1 ring-slate-200">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-left text-xs text-slate-600"><tr><th class="px-3 py-2">Created</th><th class="px-3 py-2">Description</th><th class="px-3 py-2">Permissions</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Reference</th><th></th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <% @tokens.each do |t| %>
+              <tr class="align-top">
+                <td class="px-3 py-2 whitespace-nowrap"><%= format_time(t["dateCreated"]) %></td>
+                <td class="px-3 py-2"><%= t["description"] %></td>
+                <td class="px-3 py-2"><div class="flex flex-wrap gap-1"><% Array(t["requestedPermissions"]).each do |p| %><%= pill(p, :blue) %><% end %></div></td>
+                <td class="px-3 py-2"><%= pill(t["status"], t["status"] == "Active" ? :green : :slate) %></td>
+                <td class="px-3 py-2 font-mono text-xs"><%= t["referenceNumber"] %></td>
+                <td class="px-3 py-2 text-right"><%= button_to "Revoke", tokens_revoke_path(t["referenceNumber"]), class: "btn-danger py-1! text-xs!", form: { onsubmit: "return confirm('Revoke this token?')" } if %w[Active Pending].include?(t["status"]) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <%= render "shared/card", title: "Generate a token", endpoint: "POST /tokens", css: "lg:col-span-2" do %>
+    <%= form_with url: tokens_path, class: "space-y-4" do %>
+      <div>
+        <span class="label">Permissions</span>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <% TokensController::PERMISSIONS.each do |p| %>
+            <label class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm ring-1 ring-slate-200 has-checked:bg-indigo-50 has-checked:ring-indigo-300">
+              <input type="checkbox" class="checkbox" name="permissions[]" value="<%= p %>" <%= "checked" if %w[InvoiceRead InvoiceWrite].include?(p) %>> <%= p %>
+            </label>
+          <% end %>
+        </div>
+      </div>
+      <div><label class="label">Description</label><input class="input" name="description" value="Demo token <%= Date.current %>" minlength="5" required></div>
+      <button class="btn-primary">Generate token</button>
+    <% end %>
+  <% end %>
+
+  <div class="space-y-6">
+    <%= render "shared/card", title: "List tokens", endpoint: "GET /tokens" do %>
+      <%= form_with url: tokens_list_path, class: "space-y-3" do %>
+        <select class="input" name="status"><option value="">Any status</option><% %w[Active Pending Revoking Revoked Failed].each do |s| %><option><%= s %></option><% end %></select>
+        <button class="btn-secondary w-full">List</button>
+      <% end %>
+    <% end %>
+    <%= render "shared/card", title: "Token status", endpoint: "GET /tokens/{ref}" do %>
+      <%= form_with url: tokens_status_path, class: "space-y-3" do %>
+        <input class="input font-mono" name="reference" placeholder="Reference number" required>
+        <button class="btn-secondary w-full">Check</button>
+      <% end %>
+    <% end %>
+  </div>
+</div>
