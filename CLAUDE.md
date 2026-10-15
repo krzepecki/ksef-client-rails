@@ -4,7 +4,7 @@ A pure-Ruby client for the Polish KSeF API 2.0 (contract 2.8.1). Module `Ksef`, 
 `ksef-client-rails`, require path `ksef`. No hard dependency on Rails; the Railtie loads only when
 Rails is present.
 
-How to use it: [`README.md`](README.md).
+How to use it: [`README.md`](README.md) (overview, quick start) and [`guides/`](guides) (the details).
 
 ## Layout
 
@@ -20,6 +20,7 @@ How to use it: [`README.md`](README.md).
 | `tools/e2e_test_env.rb` | Every flow on live KSeF TEST, no credentials (a self-signed seal for a random NIP) |
 | `tools/openapi_drift.rb` | The OpenAPI fixture vs. what TEST/DEMO/PROD publish now |
 | `tools/e2e_online.rb`, `tools/diagnose_session.rb` | Manual runs with your own KSeF token |
+| `guides/` | Usage guides linked from the README, packaged with the gem; the README stays short |
 | `examples/ksef_demo/` | Rails 8 demo app / manual test bench (see its README) |
 | `examples/fa3_{minimal,typical,full}.xml` | `Ksef::Invoices::Sample` as XML, packaged with the gem; `rake xsd:examples` writes them |
 
@@ -94,8 +95,8 @@ Each of these is confirmed by the oracle, the official SDKs or a live TEST/DEMO 
 - Resource responses are plain hashes; don't add models that reject unknown fields. Where a flow
   needs a field, the resource call names it (`returns: %w[referenceNumber]`) and a 2xx without it
   raises; keep that list to the keys the gem reads, not every key the contract marks required.
-- `spec.files` takes git-tracked files only: `git add` a new file under `lib/`, `schemas/` or
-  `examples/` before `gem build`, or it is left out of the package.
+- `spec.files` takes git-tracked files only: `git add` a new file under `lib/`, `schemas/`,
+  `examples/` or `guides/` before `gem build`, or it is left out of the package.
 - Ruby 3.3+. The dependency floors in the gemspec are deliberate (bigdecimal, connection_pool for
   fork safety, nokogiri for the libxml2 fixes); the `minimum` CI job runs at them.
 - A new endpoint or parameter in the OpenAPI fixture fails the contract suite's coverage check until
@@ -109,7 +110,7 @@ Each of these is confirmed by the oracle, the official SDKs or a live TEST/DEMO 
 
 - All code, comments and documentation are in English.
 - Comments stay brief: class headers ≤3 lines (what it is + the one non-obvious decision), no
-  `@example` blocks in `lib/` (usage lives in README), `@param`/`@return` on public methods.
+  `@example` blocks in `lib/` (usage lives in README and `guides/`), `@param`/`@return` on public methods.
   Nothing that merely restates the code or duplicates a constant below it.
 - Endpoint paths live as constants at the top of each resource class.
 - RuboCop with relaxed metrics for crypto/XAdES (see `.rubocop.yml`).

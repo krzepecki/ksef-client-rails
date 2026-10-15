@@ -33,6 +33,7 @@ Gem::Specification.new do |spec|
     "schemas/README.md",
     "examples/fa3_{minimal,typical,full}.xml",
     "README.md",
+    "guides/*.md",
     "CHANGELOG.md",
     "LICENSE.txt",
     "NOTICE"
